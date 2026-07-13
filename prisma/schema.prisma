@@ -1,0 +1,267 @@
+// Pharmacy EMR — data model per PRD Section 7
+// Dev uses SQLite; swap datasource provider to "postgresql" for production.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy
+// ---------------------------------------------------------------------------
+
+model Pharmacy {
+  id          String   @id @default(cuid())
+  name        String
+  subdomain   String   @unique
+  logoUrl     String?
+  brandColor  String   @default("#0F6E56")
+  createdAt   DateTime @default(now())
+
+  branches Branch[]
+  staff    Staff[]
+  patients Patient[]
+
+  @@map("pharmacies")
+}
+
+model Branch {
+  id         String   @id @default(cuid())
+  pharmacyId String
+  name       String
+  address    String?
+  createdAt  DateTime @default(now())
+
+  pharmacy  Pharmacy   @relation(fields: [pharmacyId], references: [id])
+  staff     Staff[]
+  patients  Patient[]
+  encounters Encounter[]
+
+  @@map("branches")
+}
+
+model Staff {
+  id         String   @id @default(cuid())
+  pharmacyId String
+  branchId   String?
+  fullName   String
+  email      String   @unique
+  role       String   @default("pharmacist") // pharmacist, technician, admin
+  passwordHash String?
+  createdAt  DateTime @default(now())
+
+  pharmacy   Pharmacy    @relation(fields: [pharmacyId], references: [id])
+  branch     Branch?     @relation(fields: [branchId], references: [id])
+  encounters Encounter[]
+  auditLogs  AuditLog[]
+
+  @@map("staff")
+}
+
+// ---------------------------------------------------------------------------
+// Patient
+// ---------------------------------------------------------------------------
+
+model Patient {
+  id          String   @id @default(cuid())
+  pharmacyId  String
+  branchId    String?
+  fullName    String
+  phoneNumber String
+  dateOfBirth DateTime?
+  gender      String? // male, female, other
+  address     String?
+
+  faceEmbedding String? // JSON-encoded float array, stubbed until face-api wired in
+  photoUrl      String?
+
+  knownAllergies    String @default("[]") // JSON array of { substance, severity, note }
+  chronicConditions String @default("[]") // JSON array of strings
+  currentMedications String @default("[]") // JSON array of { name, dose }
+
+  consentGiven     Boolean   @default(false)
+  consentTimestamp DateTime?
+
+  createdAt   DateTime  @default(now())
+  lastVisitAt DateTime?
+
+  pharmacy   Pharmacy    @relation(fields: [pharmacyId], references: [id])
+  branch     Branch?     @relation(fields: [branchId], references: [id])
+  encounters Encounter[]
+
+  @@index([pharmacyId, phoneNumber])
+  @@index([pharmacyId, fullName])
+  @@map("patients")
+}
+
+// ---------------------------------------------------------------------------
+// Encounter and sub-records
+// ---------------------------------------------------------------------------
+
+// EncounterStatus: "active" | "complete" | "diagnostic_pending" | "diagnostic_resumed"
+// ExitType: "treated" | "referred" | "diagnostic"
+// (plain strings — SQLite has no native enum support; values enforced in src/lib/enums.ts)
+
+model Encounter {
+  id            String   @id @default(cuid())
+  patientId     String
+  pharmacyId    String
+  branchId      String?
+  staffId       String
+  encounterDate DateTime @default(now())
+  status        String   @default("active")
+  exitType      String?
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  branch  Branch? @relation(fields: [branchId], references: [id])
+  staff   Staff   @relation(fields: [staffId], references: [id])
+
+  complaint    Complaint?
+  hpcs         Hpc[]
+  historySnapshot PatientHistorySnapshot?
+  ros          ReviewOfSystems?
+  assessment   Assessment?
+  managementPlan ManagementPlan?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pharmacyId, patientId])
+  @@map("encounters")
+}
+
+model Complaint {
+  id              String   @id @default(cuid())
+  encounterId     String   @unique
+  voiceTranscript String?
+  images          String   @default("[]") // JSON array of URLs
+  files           String   @default("[]") // JSON array of URLs
+  textInput       String?
+  gemmaSummary    String?
+  complaintSegments String @default("[]") // JSON array of { label, summary }
+  createdAt       DateTime @default(now())
+
+  encounter Encounter @relation(fields: [encounterId], references: [id])
+
+  @@map("complaints")
+}
+
+model Hpc {
+  id                String   @id @default(cuid())
+  encounterId       String
+  complaintSegment  String
+  questionsGenerated String  @default("[]") // JSON array of { question, options }
+  answersGiven      String   @default("[]") // JSON array of { question, answer }
+  freeTextAdditions String?
+  createdAt         DateTime @default(now())
+
+  encounter Encounter @relation(fields: [encounterId], references: [id])
+
+  @@map("hpcs")
+}
+
+model PatientHistorySnapshot {
+  id           String   @id @default(cuid())
+  encounterId  String   @unique
+  ageAtVisit   Int?
+  gender       String?
+  conditions   String   @default("[]")
+  medications  String   @default("[]")
+  allergies    String   @default("[]")
+
+  bloodPressure String?
+  temperature   Float?
+  bloodSugar    Float?
+  pulse         Int?
+  weight        Float?
+
+  isPregnant     Boolean?
+  isBreastfeeding Boolean?
+
+  createdAt DateTime @default(now())
+
+  encounter Encounter @relation(fields: [encounterId], references: [id])
+
+  @@map("patient_history_snapshots")
+}
+
+model ReviewOfSystems {
+  id                 String   @id @default(cuid())
+  encounterId        String   @unique
+  questionsGenerated String   @default("[]") // JSON array of strings
+  answersGiven       String   @default("[]") // JSON array of { question, answer: yes|no|unsure }
+  createdAt          DateTime @default(now())
+
+  encounter Encounter @relation(fields: [encounterId], references: [id])
+
+  @@map("review_of_systems")
+}
+
+model Assessment {
+  id                  String   @id @default(cuid())
+  encounterId         String   @unique
+  pharmacistImpression String
+  gemmaSuggestion     String?
+  suggestionAccepted  Boolean?
+  createdAt           DateTime @default(now())
+
+  encounter Encounter @relation(fields: [encounterId], references: [id])
+
+  @@map("assessments")
+}
+
+model ManagementPlan {
+  id           String   @id @default(cuid())
+  encounterId  String   @unique
+  exitType     String
+
+  // Exit A — diagnostics
+  diagnosticsRecommended String  @default("[]") // JSON array of test names
+  patientReturning       Boolean?
+  interimTreatment       Boolean @default(false)
+
+  // Exit B — referral
+  referralDetails String? // JSON: { referredTo, reason, urgency }
+
+  // Exit C / interim meds
+  medicinesDispensed String? // JSON array of { name, dose, qty, interim }
+
+  nonPharmacologicalAdvice String?
+  followUpInstructions     String?
+  counsellingNotes         String?
+
+  linkedTransactionId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  encounter Encounter @relation(fields: [encounterId], references: [id])
+
+  @@map("management_plans")
+}
+
+// ---------------------------------------------------------------------------
+// Audit log — every addition, update, or edit to any record.
+// recordType/recordId are a polymorphic pointer (e.g. "patient" / patient.id);
+// intentionally not a Prisma relation since it spans multiple record types.
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  recordType   String // e.g. "patient"
+  recordId     String
+  fieldChanged String
+  oldValue     String?
+  newValue     String?
+  changedById  String
+  changedAt    DateTime @default(now())
+
+  changedBy Staff @relation(fields: [changedById], references: [id])
+
+  @@index([recordType, recordId])
+  @@map("audit_logs")
+}
