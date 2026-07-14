@@ -54,12 +54,12 @@ export default function LoginPage() {
           <div>
             <label className="field-label">Password</label>
             <div style={{ position: "relative" }}>
-              <input 
+              <input
                 name="password"
-                type={showPassword ? "text" : "password"} 
+                type={showPassword ? "text" : "password"}
                 required
                 className="field"
-                defaultValue="password123"
+                placeholder="Password"
                 style={{ paddingRight: "40px" }}
               />
               <button

@@ -3,113 +3,152 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-async function main() {
+interface SeedPatientInput {
+  fullName: string;
+  phoneNumber: string;
+  dateOfBirth: Date;
+  gender: string;
+  knownAllergies?: { substance: string; severity: string; note?: string }[];
+  chronicConditions?: string[];
+  currentMedications?: { name: string; dose: string }[];
+  consentTimestamp: Date;
+  lastVisitAt: Date | null;
+}
+
+async function seedPharmacy(config: {
+  name: string;
+  subdomain: string;
+  brandColor: string;
+  branchName: string;
+  branchAddress: string;
+  staffFullName: string;
+  staffPhoneNumber: string;
+  staffPassword: string;
+  patients: SeedPatientInput[];
+}) {
   const pharmacy = await prisma.pharmacy.upsert({
-    where: { subdomain: "monak" },
+    where: { subdomain: config.subdomain },
     update: {},
     create: {
-      name: "Monak Pharmacy",
-      subdomain: "monak",
-      brandColor: "#0F6E56",
+      name: config.name,
+      subdomain: config.subdomain,
+      brandColor: config.brandColor,
     },
   });
 
   let branch = await prisma.branch.findFirst({
-    where: { pharmacyId: pharmacy.id, name: "Main Branch" },
+    where: { pharmacyId: pharmacy.id, name: config.branchName },
   });
   if (!branch) {
     branch = await prisma.branch.create({
       data: {
         pharmacyId: pharmacy.id,
-        name: "Main Branch",
-        address: "12 Awolowo Road, Ikoyi, Lagos",
+        name: config.branchName,
+        address: config.branchAddress,
       },
     });
   }
 
-  const passwordHash = await bcrypt.hash("password123", 10);
+  const passwordHash = await bcrypt.hash(config.staffPassword, 10);
 
   const staff = await prisma.staff.upsert({
-    where: { phoneNumber: "08012345001" },
+    where: { phoneNumber: config.staffPhoneNumber },
     update: { passwordHash },
     create: {
       pharmacyId: pharmacy.id,
       branchId: branch.id,
-      fullName: "Chidinma Eze",
-      phoneNumber: "08012345001",
+      fullName: config.staffFullName,
+      phoneNumber: config.staffPhoneNumber,
       role: "pharmacist",
       passwordHash,
     },
   });
 
-  const patients = [
-    {
-      fullName: "Amaka Nwachukwu",
-      phoneNumber: "+2348012345001",
-      dateOfBirth: new Date("1991-03-14"),
-      gender: "female",
-      knownAllergies: JSON.stringify([
-        { substance: "Penicillin", severity: "severe", note: "Anaphylaxis" },
-      ]),
-      chronicConditions: JSON.stringify(["Hypertension"]),
-      currentMedications: JSON.stringify([{ name: "Amlodipine", dose: "5mg" }]),
-      consentGiven: true,
-      consentTimestamp: new Date(),
-      lastVisitAt: new Date(),
-    },
-    {
-      fullName: "Kelvin Osagie",
-      phoneNumber: "+2348012345002",
-      dateOfBirth: new Date("1983-11-02"),
-      gender: "male",
-      knownAllergies: JSON.stringify([
-        { substance: "Sulfa drugs", severity: "moderate" },
-      ]),
-      chronicConditions: JSON.stringify(["Hypertension", "Type 2 Diabetes"]),
-      currentMedications: JSON.stringify([
-        { name: "Amlodipine", dose: "5mg" },
-        { name: "Metformin", dose: "500mg" },
-      ]),
-      consentGiven: true,
-      consentTimestamp: new Date(Date.now() - 86_400_000 * 30),
-      lastVisitAt: new Date(Date.now() - 86_400_000 * 1),
-    },
-    {
-      fullName: "Fatima Ebuka",
-      phoneNumber: "+2348012345003",
-      dateOfBirth: new Date("1996-07-22"),
-      gender: "female",
-      knownAllergies: JSON.stringify([]),
-      chronicConditions: JSON.stringify([]),
-      currentMedications: JSON.stringify([]),
-      consentGiven: true,
-      consentTimestamp: new Date(Date.now() - 86_400_000 * 10),
-      lastVisitAt: new Date(Date.now() - 86_400_000 * 3),
-    },
-    {
-      fullName: "Taiwo Okonkwo",
-      phoneNumber: "+2348012345004",
-      dateOfBirth: new Date("1975-01-09"),
-      gender: "male",
-      knownAllergies: JSON.stringify([]),
-      chronicConditions: JSON.stringify(["Angina"]),
-      currentMedications: JSON.stringify([{ name: "Aspirin", dose: "75mg" }]),
-      consentGiven: true,
-      consentTimestamp: new Date(Date.now() - 86_400_000 * 20),
-      lastVisitAt: new Date(Date.now() - 86_400_000 * 7),
-    },
-  ];
-
-  for (const p of patients) {
+  for (const p of config.patients) {
     const existingPatient = await prisma.patient.findFirst({
       where: { pharmacyId: pharmacy.id, phoneNumber: p.phoneNumber },
     });
     if (!existingPatient) {
       await prisma.patient.create({
-        data: { pharmacyId: pharmacy.id, branchId: branch.id, ...p },
+        data: {
+          pharmacyId: pharmacy.id,
+          branchId: branch.id,
+          fullName: p.fullName,
+          phoneNumber: p.phoneNumber,
+          dateOfBirth: p.dateOfBirth,
+          gender: p.gender,
+          knownAllergies: JSON.stringify(p.knownAllergies ?? []),
+          chronicConditions: JSON.stringify(p.chronicConditions ?? []),
+          currentMedications: JSON.stringify(p.currentMedications ?? []),
+          consentGiven: true,
+          consentTimestamp: p.consentTimestamp,
+          lastVisitAt: p.lastVisitAt,
+        },
       });
     }
   }
+
+  return { pharmacy, branch, staff };
+}
+
+async function main() {
+  const { pharmacy, branch, staff } = await seedPharmacy({
+    name: "Monak Pharmacy",
+    subdomain: "monak",
+    brandColor: "#0F6E56",
+    branchName: "Main Branch",
+    branchAddress: "12 Awolowo Road, Ikoyi, Lagos",
+    staffFullName: "Chidinma Eze",
+    staffPhoneNumber: "08012345001",
+    staffPassword: "password123",
+    patients: [
+      {
+        fullName: "Amaka Nwachukwu",
+        phoneNumber: "+2348012345001",
+        dateOfBirth: new Date("1991-03-14"),
+        gender: "female",
+        knownAllergies: [
+          { substance: "Penicillin", severity: "severe", note: "Anaphylaxis" },
+        ],
+        chronicConditions: ["Hypertension"],
+        currentMedications: [{ name: "Amlodipine", dose: "5mg" }],
+        consentTimestamp: new Date(),
+        lastVisitAt: new Date(),
+      },
+      {
+        fullName: "Kelvin Osagie",
+        phoneNumber: "+2348012345002",
+        dateOfBirth: new Date("1983-11-02"),
+        gender: "male",
+        knownAllergies: [{ substance: "Sulfa drugs", severity: "moderate" }],
+        chronicConditions: ["Hypertension", "Type 2 Diabetes"],
+        currentMedications: [
+          { name: "Amlodipine", dose: "5mg" },
+          { name: "Metformin", dose: "500mg" },
+        ],
+        consentTimestamp: new Date(Date.now() - 86_400_000 * 30),
+        lastVisitAt: new Date(Date.now() - 86_400_000 * 1),
+      },
+      {
+        fullName: "Fatima Ebuka",
+        phoneNumber: "+2348012345003",
+        dateOfBirth: new Date("1996-07-22"),
+        gender: "female",
+        consentTimestamp: new Date(Date.now() - 86_400_000 * 10),
+        lastVisitAt: new Date(Date.now() - 86_400_000 * 3),
+      },
+      {
+        fullName: "Taiwo Okonkwo",
+        phoneNumber: "+2348012345004",
+        dateOfBirth: new Date("1975-01-09"),
+        gender: "male",
+        chronicConditions: ["Angina"],
+        currentMedications: [{ name: "Aspirin", dose: "75mg" }],
+        consentTimestamp: new Date(Date.now() - 86_400_000 * 20),
+        lastVisitAt: new Date(Date.now() - 86_400_000 * 7),
+      },
+    ],
+  });
 
   // Kelvin Osagie: an encounter still awaiting diagnostics (Exit A, close-here=false)
   const kelvin = await prisma.patient.findFirst({
@@ -198,44 +237,38 @@ async function main() {
     }
   }
 
-  // ── Medlife Pharmacy ───────────────────────────────────────────────
-  const medlife = await prisma.pharmacy.upsert({
-    where: { subdomain: "medlife" },
-    update: {},
-    create: {
-      name: "Medlife Pharmacy",
-      subdomain: "medlife",
-      brandColor: "#1E40AF",
-    },
-  });
-
-  let medlifeBranch = await prisma.branch.findFirst({
-    where: { pharmacyId: medlife.id, name: "Main Branch" },
-  });
-  if (!medlifeBranch) {
-    medlifeBranch = await prisma.branch.create({
-      data: {
-        pharmacyId: medlife.id,
-        name: "Main Branch",
-        address: "45 Sapele Road, Benin City, Edo",
+  await seedPharmacy({
+    name: "Medlife Pharmacy",
+    subdomain: "medlife",
+    brandColor: "#1D4ED8",
+    branchName: "Main Branch",
+    branchAddress: "Medlife Pharmacy",
+    staffFullName: "Medlife Pharmacist",
+    staffPhoneNumber: "08012345002",
+    staffPassword: "medlife123",
+    patients: [
+      {
+        fullName: "Ngozi Chukwu",
+        phoneNumber: "+2348023456001",
+        dateOfBirth: new Date("1988-05-19"),
+        gender: "female",
+        knownAllergies: [{ substance: "Aspirin", severity: "moderate" }],
+        chronicConditions: ["Asthma"],
+        consentTimestamp: new Date(Date.now() - 86_400_000 * 2),
+        lastVisitAt: new Date(Date.now() - 86_400_000 * 2),
       },
-    });
-  }
-
-  await prisma.staff.upsert({
-    where: { phoneNumber: "08012345002" },
-    update: { passwordHash },
-    create: {
-      pharmacyId: medlife.id,
-      branchId: medlifeBranch.id,
-      fullName: "Emeka Okafor",
-      phoneNumber: "08012345002",
-      role: "pharmacist",
-      passwordHash,
-    },
+      {
+        fullName: "Emeka Bassey",
+        phoneNumber: "+2348023456002",
+        dateOfBirth: new Date("1979-09-03"),
+        gender: "male",
+        consentTimestamp: new Date(Date.now() - 86_400_000 * 5),
+        lastVisitAt: new Date(Date.now() - 86_400_000 * 5),
+      },
+    ],
   });
 
-  console.log("Seed complete:", { monak: pharmacy.subdomain, medlife: medlife.subdomain });
+  console.log("Seed complete: monak + medlife pharmacies ready.");
 }
 
 main()
