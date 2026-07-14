@@ -1,5 +1,5 @@
-// SQLite has no native enum type, so Encounter.status / exitType / ManagementPlan.exitType
-// are plain strings constrained to these values by application code.
+// Encounter.status / exitType / ManagementPlan.exitType are plain strings
+// (not a Prisma enum) constrained to these values by application code.
 
 export const ENCOUNTER_STATUS = {
   active: "active",

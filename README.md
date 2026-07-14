@@ -5,24 +5,37 @@ the PRD in this repo's history. Next.js (App Router, TypeScript) + Prisma.
 
 ## Getting started
 
+Needs a Postgres database — either run one locally with Docker, or point
+`DATABASE_URL` at a hosted one (Neon, Supabase, Vercel Postgres, etc.).
+
 ```bash
 npm install
 cp .env.example .env
-npx prisma migrate dev   # creates prisma/dev.db and applies the schema
-npm run db:seed          # sample pharmacy, staff, and four patients
+docker compose up -d      # local Postgres on :5432 (skip if using a hosted DB)
+npx prisma migrate dev    # applies prisma/migrations
+npm run db:seed           # sample pharmacy, staff, and four patients
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). The seeded pharmacy is
 "Monak Pharmacy" and the seeded pharmacist is `pharmacist@monak.test`.
 
+### Deploying (e.g. Vercel)
+
+Set `DATABASE_URL` in the host's environment variables to your production
+Postgres connection string. `npm run build` runs `prisma migrate deploy`
+first, which applies committed migrations from `prisma/migrations` — it
+never touches schema outside of what's already been migrated and reviewed
+locally via `prisma migrate dev`. Don't use `prisma db push` for this; it
+skips migration history and can silently drop data.
+
 ## What's here
 
 - **Data model** (`prisma/schema.prisma`) — Pharmacy/Branch/Staff tenancy,
   Patient, Encounter and its sub-records (Complaint, Hpc, PatientHistorySnapshot,
   ReviewOfSystems, Assessment, ManagementPlan), and a polymorphic AuditLog for
-  every change to the locked patient-identity fields. SQLite for local dev —
-  swap the datasource provider to `postgresql` for production.
+  every change to the locked patient-identity fields. Postgres everywhere
+  (local via Docker, production via a hosted provider) — see "Getting started".
 - **Encounter flow** (`src/app/encounter/**`) — the full linear wizard:
   identification → (consent, new patients only) → complaint → HPC → history/vitals
   → review of systems → assessment → management plan (treat / refer / diagnostics),
