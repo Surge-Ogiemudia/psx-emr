@@ -41,13 +41,14 @@ export default function LoginPage() {
 
         <form action={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <div>
-            <label className="field-label">Email Address</label>
+            <label className="field-label">Phone Number</label>
             <input 
-              name="email"
-              type="email" 
+              name="phoneNumber"
+              type="text" 
               required
               className="field"
-              defaultValue="pharmacist@monak.test"
+              defaultValue="08000000000"
+              placeholder="e.g. 08012345678"
             />
           </div>
           <div>

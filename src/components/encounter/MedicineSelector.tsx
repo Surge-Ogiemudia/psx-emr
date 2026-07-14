@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { MOCK_INVENTORY } from "@/lib/inventory";
+import { useState, useEffect } from "react";
+import { searchInventory } from "@/app/encounter/actions";
 import type { DispensedMedicine } from "@/lib/types";
 
 export default function MedicineSelector({
@@ -15,10 +15,26 @@ export default function MedicineSelector({
 }) {
   const [query, setQuery] = useState("");
   const [showResults, setShowResults] = useState(false);
+  const [matches, setMatches] = useState<{ name: string; defaultDose: string }[]>([]);
 
-  const matches = query
-    ? MOCK_INVENTORY.filter((m) => m.name.toLowerCase().includes(query.toLowerCase()))
-    : MOCK_INVENTORY;
+  useEffect(() => {
+    let active = true;
+    if (!query.trim()) {
+      setMatches([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      const results = await searchInventory(query);
+      if (active) {
+        setMatches(results);
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [query]);
 
   function addMedicine(name: string, dose: string) {
     onChange([...medicines, { name, dose, qty: 1, interim }]);

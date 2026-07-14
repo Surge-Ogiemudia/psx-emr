@@ -18,6 +18,6 @@ export async function getCurrentStaff(pharmacyId: string) {
   if (!session?.user?.email) return null;
 
   return prisma.staff.findUnique({
-    where: { email: session.user.email },
+    where: { phoneNumber: session.user.email },
   });
 }

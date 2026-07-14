@@ -10,7 +10,7 @@ export async function loginUser(formData: FormData) {
     if (error instanceof AuthError) {
       switch (error.type) {
         case "CredentialsSignin":
-          return { error: "Invalid email or password." };
+          return { error: "Invalid phone number or password." };
         default:
           return { error: "Something went wrong." };
       }

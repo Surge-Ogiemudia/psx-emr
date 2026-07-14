@@ -16,8 +16,8 @@ datasource db {
 
 model Pharmacy {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  name        String
-  subdomain   String   @unique
+  name        String   @map("pharmacyName")
+  subdomain   String   @unique @map("slug")
   logoUrl     String?
   brandColor  String   @default("#0F6E56")
   createdAt   DateTime @default(now())
@@ -32,8 +32,8 @@ model Pharmacy {
 model Branch {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   pharmacyId String   @db.ObjectId
-  name       String
-  address    String?
+  name       String   @map("branchName")
+  address    String?  @map("location")
   createdAt  DateTime @default(now())
 
   pharmacy  Pharmacy   @relation(fields: [pharmacyId], references: [id])
@@ -48,9 +48,9 @@ model Staff {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   pharmacyId String   @db.ObjectId
   branchId   String?  @db.ObjectId
-  fullName   String
-  email      String   @unique
-  role       String   @default("pharmacist") // pharmacist, technician, admin
+  fullName   String   @map("name")
+  phoneNumber String  @unique @map("phoneNumber")
+  role       String   @default("pharmacist") // pharmacist, technician, admin, staff, etc
   passwordHash String?
   createdAt  DateTime @default(now())
 
@@ -59,7 +59,7 @@ model Staff {
   encounters Encounter[]
   auditLogs  AuditLog[]
 
-  @@map("staff")
+  @@map("users")
 }
 
 // ---------------------------------------------------------------------------
@@ -264,4 +264,35 @@ model AuditLog {
 
   @@index([recordType, recordId])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// POS Inventory Integration
+// ---------------------------------------------------------------------------
+
+model Product {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  pharmacyId      String   @db.ObjectId
+  branchId        String   @db.ObjectId
+  itemName        String
+  brand           String
+  size            String
+  category        String
+  quantityInStock Float
+  retailPrice     Float
+  expiryDate      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("products")
+}
+
+model SsoToken {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  token     String   @unique
+  userId    String   @db.ObjectId
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("sso_tokens")
 }

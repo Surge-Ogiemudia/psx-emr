@@ -30,13 +30,13 @@ async function main() {
   const passwordHash = await bcrypt.hash("password123", 10);
 
   const staff = await prisma.staff.upsert({
-    where: { email: "pharmacist@monak.test" },
+    where: { phoneNumber: "08012345001" },
     update: { passwordHash },
     create: {
       pharmacyId: pharmacy.id,
       branchId: branch.id,
       fullName: "Chidinma Eze",
-      email: "pharmacist@monak.test",
+      phoneNumber: "08012345001",
       role: "pharmacist",
       passwordHash,
     },
@@ -198,7 +198,44 @@ async function main() {
     }
   }
 
-  console.log("Seed complete:", { pharmacy: pharmacy.subdomain, staff: staff.email });
+  // ── Medlife Pharmacy ───────────────────────────────────────────────
+  const medlife = await prisma.pharmacy.upsert({
+    where: { subdomain: "medlife" },
+    update: {},
+    create: {
+      name: "Medlife Pharmacy",
+      subdomain: "medlife",
+      brandColor: "#1E40AF",
+    },
+  });
+
+  let medlifeBranch = await prisma.branch.findFirst({
+    where: { pharmacyId: medlife.id, name: "Main Branch" },
+  });
+  if (!medlifeBranch) {
+    medlifeBranch = await prisma.branch.create({
+      data: {
+        pharmacyId: medlife.id,
+        name: "Main Branch",
+        address: "45 Sapele Road, Benin City, Edo",
+      },
+    });
+  }
+
+  await prisma.staff.upsert({
+    where: { phoneNumber: "08012345002" },
+    update: { passwordHash },
+    create: {
+      pharmacyId: medlife.id,
+      branchId: medlifeBranch.id,
+      fullName: "Emeka Okafor",
+      phoneNumber: "08012345002",
+      role: "pharmacist",
+      passwordHash,
+    },
+  });
+
+  console.log("Seed complete:", { monak: pharmacy.subdomain, medlife: medlife.subdomain });
 }
 
 main()
