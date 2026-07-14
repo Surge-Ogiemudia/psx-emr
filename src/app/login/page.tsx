@@ -7,6 +7,8 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
+  const [showPassword, setShowPassword] = useState(false);
+
   const handleSubmit = async (formData: FormData) => {
     setPending(true);
     setError(null);
@@ -50,13 +52,37 @@ export default function LoginPage() {
           </div>
           <div>
             <label className="field-label">Password</label>
-            <input 
-              name="password"
-              type="password" 
-              required
-              className="field"
-              defaultValue="password123"
-            />
+            <div style={{ position: "relative" }}>
+              <input 
+                name="password"
+                type={showPassword ? "text" : "password"} 
+                required
+                className="field"
+                defaultValue="password123"
+                style={{ paddingRight: "40px" }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--muted)",
+                  fontSize: "16px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 0
+                }}
+              >
+                {showPassword ? "👁️" : "👁️‍🗨️"}
+              </button>
+            </div>
           </div>
           
           {error && (
