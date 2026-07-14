@@ -13,16 +13,18 @@ async function main() {
     },
   });
 
-  const branch = await prisma.branch.upsert({
-    where: { id: "seed-branch-main" },
-    update: {},
-    create: {
-      id: "seed-branch-main",
-      pharmacyId: pharmacy.id,
-      name: "Main Branch",
-      address: "12 Awolowo Road, Ikoyi, Lagos",
-    },
+  let branch = await prisma.branch.findFirst({
+    where: { pharmacyId: pharmacy.id, name: "Main Branch" },
   });
+  if (!branch) {
+    branch = await prisma.branch.create({
+      data: {
+        pharmacyId: pharmacy.id,
+        name: "Main Branch",
+        address: "12 Awolowo Road, Ikoyi, Lagos",
+      },
+    });
+  }
 
   const staff = await prisma.staff.upsert({
     where: { email: "pharmacist@monak.test" },
