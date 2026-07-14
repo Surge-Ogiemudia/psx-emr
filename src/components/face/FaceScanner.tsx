@@ -13,6 +13,7 @@ export default function FaceScanner({ onCapture, onClose }: FaceScannerProps) {
   const [status, setStatus] = useState<"loading" | "camera-active" | "detecting" | "captured" | "error">("loading");
   const [errorMsg, setErrorMsg] = useState("");
   const [detectionScore, setDetectionScore] = useState<number | null>(null);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const faceapiRef = useRef<any>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationRef = useRef<number | null>(null);
@@ -34,7 +35,7 @@ export default function FaceScanner({ onCapture, onClose }: FaceScannerProps) {
 
         // Start video stream
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: 640, height: 480 },
+          video: { facingMode: facingMode, width: 640, height: 480 },
           audio: false
         });
         
@@ -67,7 +68,7 @@ export default function FaceScanner({ onCapture, onClose }: FaceScannerProps) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, []);
+  }, [facingMode]);
 
   useEffect(() => {
     if (status !== "camera-active") return;
@@ -269,6 +270,31 @@ export default function FaceScanner({ onCapture, onClose }: FaceScannerProps) {
         </>
       )}
 
+      {status === "camera-active" && (
+        <button 
+          type="button"
+          onClick={() => setFacingMode(prev => prev === "user" ? "environment" : "user")}
+          style={{
+            position: "absolute",
+            top: "10px",
+            left: "10px",
+            background: "rgba(0,0,0,0.6)",
+            color: "#fff",
+            border: "none",
+            borderRadius: "20px",
+            padding: "6px 12px",
+            cursor: "pointer",
+            fontSize: "11px",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            zIndex: 100
+          }}
+        >
+          🔄 {facingMode === "user" ? "Back Cam" : "Front Cam"}
+        </button>
+      )}
+
       {onClose && (
         <button 
           onClick={onClose}
@@ -286,7 +312,8 @@ export default function FaceScanner({ onCapture, onClose }: FaceScannerProps) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "12px"
+            fontSize: "12px",
+            zIndex: 100
           }}
         >
           ✕
