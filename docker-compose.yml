@@ -1,15 +1,17 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: mongo:7
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: psxemr
-      POSTGRES_PASSWORD: psxemr
-      POSTGRES_DB: psxemr
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - psxemr-db:/var/lib/postgresql/data
+      - psxemr-db:/data/db
+    healthcheck:
+      test: mongosh --quiet --eval "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]}).ok }"
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   psxemr-db:

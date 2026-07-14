@@ -1,12 +1,12 @@
 // Pharmacy EMR — data model per PRD Section 7
-// Postgres in all environments (see README for local setup / providers).
+// MongoDB in all environments (see README for local setup / Atlas).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
@@ -15,7 +15,7 @@ datasource db {
 // ---------------------------------------------------------------------------
 
 model Pharmacy {
-  id          String   @id @default(cuid())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   subdomain   String   @unique
   logoUrl     String?
@@ -30,8 +30,8 @@ model Pharmacy {
 }
 
 model Branch {
-  id         String   @id @default(cuid())
-  pharmacyId String
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  pharmacyId String   @db.ObjectId
   name       String
   address    String?
   createdAt  DateTime @default(now())
@@ -45,9 +45,9 @@ model Branch {
 }
 
 model Staff {
-  id         String   @id @default(cuid())
-  pharmacyId String
-  branchId   String?
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  pharmacyId String   @db.ObjectId
+  branchId   String?  @db.ObjectId
   fullName   String
   email      String   @unique
   role       String   @default("pharmacist") // pharmacist, technician, admin
@@ -67,9 +67,9 @@ model Staff {
 // ---------------------------------------------------------------------------
 
 model Patient {
-  id          String   @id @default(cuid())
-  pharmacyId  String
-  branchId    String?
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  pharmacyId  String   @db.ObjectId
+  branchId    String?  @db.ObjectId
   fullName    String
   phoneNumber String
   dateOfBirth DateTime?
@@ -107,11 +107,11 @@ model Patient {
 // (plain strings rather than a Prisma enum — values enforced in src/lib/enums.ts)
 
 model Encounter {
-  id            String   @id @default(cuid())
-  patientId     String
-  pharmacyId    String
-  branchId      String?
-  staffId       String
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  patientId     String   @db.ObjectId
+  pharmacyId    String   @db.ObjectId
+  branchId      String?  @db.ObjectId
+  staffId       String   @db.ObjectId
   encounterDate DateTime @default(now())
   status        String   @default("active")
   exitType      String?
@@ -135,8 +135,8 @@ model Encounter {
 }
 
 model Complaint {
-  id              String   @id @default(cuid())
-  encounterId     String   @unique
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  encounterId     String   @unique @db.ObjectId
   voiceTranscript String?
   images          String   @default("[]") // JSON array of URLs
   files           String   @default("[]") // JSON array of URLs
@@ -151,8 +151,8 @@ model Complaint {
 }
 
 model Hpc {
-  id                String   @id @default(cuid())
-  encounterId       String
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  encounterId       String   @db.ObjectId
   complaintSegment  String
   questionsGenerated String  @default("[]") // JSON array of { question, options }
   answersGiven      String   @default("[]") // JSON array of { question, answer }
@@ -165,8 +165,8 @@ model Hpc {
 }
 
 model PatientHistorySnapshot {
-  id           String   @id @default(cuid())
-  encounterId  String   @unique
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  encounterId  String   @unique @db.ObjectId
   ageAtVisit   Int?
   gender       String?
   conditions   String   @default("[]")
@@ -190,8 +190,8 @@ model PatientHistorySnapshot {
 }
 
 model ReviewOfSystems {
-  id                 String   @id @default(cuid())
-  encounterId        String   @unique
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  encounterId        String   @unique @db.ObjectId
   questionsGenerated String   @default("[]") // JSON array of strings
   answersGiven       String   @default("[]") // JSON array of { question, answer: yes|no|unsure }
   createdAt          DateTime @default(now())
@@ -202,8 +202,8 @@ model ReviewOfSystems {
 }
 
 model Assessment {
-  id                  String   @id @default(cuid())
-  encounterId         String   @unique
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  encounterId         String   @unique @db.ObjectId
   pharmacistImpression String
   gemmaSuggestion     String?
   suggestionAccepted  Boolean?
@@ -215,8 +215,8 @@ model Assessment {
 }
 
 model ManagementPlan {
-  id           String   @id @default(cuid())
-  encounterId  String   @unique
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  encounterId  String   @unique @db.ObjectId
   exitType     String
 
   // Exit A — diagnostics
@@ -251,13 +251,13 @@ model ManagementPlan {
 // ---------------------------------------------------------------------------
 
 model AuditLog {
-  id           String   @id @default(cuid())
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
   recordType   String // e.g. "patient"
-  recordId     String
+  recordId     String   @db.ObjectId
   fieldChanged String
   oldValue     String?
   newValue     String?
-  changedById  String
+  changedById  String   @db.ObjectId
   changedAt    DateTime @default(now())
 
   changedBy Staff @relation(fields: [changedById], references: [id])

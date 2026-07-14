@@ -5,14 +5,16 @@ the PRD in this repo's history. Next.js (App Router, TypeScript) + Prisma.
 
 ## Getting started
 
-Needs a Postgres database — either run one locally with Docker, or point
-`DATABASE_URL` at a hosted one (Neon, Supabase, Vercel Postgres, etc.).
+Needs a MongoDB database, running as a replica set (required by Prisma's
+Mongo connector, even for a single local node) — either run one locally
+with Docker, or point `DATABASE_URL` at a hosted one (MongoDB Atlas' free
+tier is already a replica set, no extra config needed).
 
 ```bash
 npm install
 cp .env.example .env
-docker compose up -d      # local Postgres on :5432 (skip if using a hosted DB)
-npx prisma migrate dev    # applies prisma/migrations
+docker compose up -d      # local Mongo replica set on :27017 (skip if using Atlas)
+npx prisma db push        # syncs prisma/schema.prisma to the database
 npm run db:seed           # sample pharmacy, staff, and four patients
 npm run dev
 ```
@@ -22,20 +24,26 @@ Open [http://localhost:3000](http://localhost:3000). The seeded pharmacy is
 
 ### Deploying (e.g. Vercel)
 
-Set `DATABASE_URL` in the host's environment variables to your production
-Postgres connection string. `npm run build` runs `prisma migrate deploy`
-first, which applies committed migrations from `prisma/migrations` — it
-never touches schema outside of what's already been migrated and reviewed
-locally via `prisma migrate dev`. Don't use `prisma db push` for this; it
-skips migration history and can silently drop data.
+Set `DATABASE_URL` in the host's environment variables to your Atlas (or
+other hosted Mongo) connection string. `npm run build` runs `prisma db push`
+first — this is the correct workflow for Mongo (unlike SQL databases, Mongo
+has no migration history to apply; Prisma's `migrate` commands aren't
+supported on this connector at all). `db push` mainly syncs indexes
+(`@unique`, `@@index`) and refuses to run destructively without
+`--accept-data-loss`, so a build never silently drops data.
 
 ## What's here
 
 - **Data model** (`prisma/schema.prisma`) — Pharmacy/Branch/Staff tenancy,
   Patient, Encounter and its sub-records (Complaint, Hpc, PatientHistorySnapshot,
   ReviewOfSystems, Assessment, ManagementPlan), and a polymorphic AuditLog for
-  every change to the locked patient-identity fields. Postgres everywhere
-  (local via Docker, production via a hosted provider) — see "Getting started".
+  every change to the locked patient-identity fields. MongoDB everywhere
+  (local via Docker, production via Atlas or similar) — see "Getting started".
+  Nested/array-shaped fields (allergies, medicines dispensed, HPC answers,
+  etc.) are still stored as JSON-encoded strings rather than Mongo's native
+  document nesting — carried over from an earlier SQLite version of this
+  schema. Works fine as-is; converting them to proper nested/array fields
+  would be a reasonable follow-up if you want to query into them directly.
 - **Encounter flow** (`src/app/encounter/**`) — the full linear wizard:
   identification → (consent, new patients only) → complaint → HPC → history/vitals
   → review of systems → assessment → management plan (treat / refer / diagnostics),
