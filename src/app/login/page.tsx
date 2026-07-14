@@ -42,23 +42,23 @@ export default function LoginPage() {
         <form action={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <div>
             <label className="field-label">Email Address</label>
-            <input 
+            <input
               name="email"
-              type="email" 
+              type="email"
               required
               className="field"
-              defaultValue="pharmacist@monak.test"
+              placeholder="you@pharmacy.com"
             />
           </div>
           <div>
             <label className="field-label">Password</label>
             <div style={{ position: "relative" }}>
-              <input 
+              <input
                 name="password"
-                type={showPassword ? "text" : "password"} 
+                type={showPassword ? "text" : "password"}
                 required
                 className="field"
-                defaultValue="password123"
+                placeholder="Password"
                 style={{ paddingRight: "40px" }}
               />
               <button
