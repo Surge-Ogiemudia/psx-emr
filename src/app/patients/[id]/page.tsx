@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import TopBar from "@/components/layout/TopBar";
-import BottomNav from "@/components/layout/BottomNav";
+
 import FooterDisclaimer from "@/components/layout/FooterDisclaimer";
 import LockedIdentity from "@/components/patient/LockedIdentity";
 import EncounterTimeline from "@/components/patient/EncounterTimeline";
@@ -62,7 +62,7 @@ export default async function PatientRecordPage({
         </Link>
       </div>
       <FooterDisclaimer />
-      <BottomNav />
+
     </AppShell>
   );
 }

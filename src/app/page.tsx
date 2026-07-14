@@ -1,6 +1,6 @@
 import AppShell from "@/components/layout/AppShell";
 import TopBar from "@/components/layout/TopBar";
-import BottomNav from "@/components/layout/BottomNav";
+import Link from "next/link";
 import FooterDisclaimer from "@/components/layout/FooterDisclaimer";
 import PatientListClient from "@/components/patient/PatientListClient";
 import { prisma } from "@/lib/prisma";
@@ -33,7 +33,9 @@ export default async function HomePage() {
         <PatientListClient initialPatients={JSON.parse(JSON.stringify(patients))} />
       </div>
       <FooterDisclaimer />
-      <BottomNav />
+      <Link href="/encounter/new" className="fab-new-encounter">
+        ＋ New Encounter
+      </Link>
     </AppShell>
   );
 }
