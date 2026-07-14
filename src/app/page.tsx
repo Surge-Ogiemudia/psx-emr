@@ -26,8 +26,8 @@ export default async function HomePage() {
   return (
     <AppShell>
       <TopBar
-        title="Patients"
-        subtitle={`${patients.length} records${pharmacy ? ` · ${pharmacy.name}` : ""}`}
+        title={`${pharmacy?.name || "Pharmacy"} EMR`}
+        subtitle={`${patients.length} patient records`}
       />
       <div className="screen-content">
         <PatientListClient initialPatients={JSON.parse(JSON.stringify(patients))} />

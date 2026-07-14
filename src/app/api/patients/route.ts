@@ -60,6 +60,8 @@ export async function POST(req: NextRequest) {
       phoneNumber: body.phoneNumber,
       dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
       gender: body.gender ?? null,
+      faceEmbedding: body.faceEmbedding ?? null,
+      photoUrl: body.photoUrl ?? null,
       // Consent must be captured explicitly on the consent screen before any
       // clinical data is recorded — never defaulted to true on creation.
       consentGiven: false,
