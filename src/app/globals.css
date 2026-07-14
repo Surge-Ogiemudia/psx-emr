@@ -71,6 +71,11 @@ a {
   background: var(--surface);
   display: flex;
   flex-direction: column;
+  /* Establishes a containing block for fixed-position children (like the
+     FAB) so they stay scoped to the shell's own box instead of jumping to
+     the browser viewport's edge once the shell is no longer full-width
+     (e.g. on desktop, where .app-shell is centered with a max-width). */
+  transform: translateZ(0);
 }
 
 .top-bar {
@@ -255,8 +260,9 @@ a {
 
 .fab-new-encounter {
   position: fixed;
-  bottom: 32px;
-  right: 32px;
+  /* Cleared above the footer-disclaimer strip so the two never overlap. */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 64px);
+  right: 24px;
   background: var(--brand);
   color: white;
   font-weight: 700;
