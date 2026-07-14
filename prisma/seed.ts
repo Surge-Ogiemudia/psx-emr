@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -26,15 +27,18 @@ async function main() {
     });
   }
 
+  const passwordHash = await bcrypt.hash("password123", 10);
+
   const staff = await prisma.staff.upsert({
     where: { email: "pharmacist@monak.test" },
-    update: {},
+    update: { passwordHash },
     create: {
       pharmacyId: pharmacy.id,
       branchId: branch.id,
       fullName: "Chidinma Eze",
       email: "pharmacist@monak.test",
       role: "pharmacist",
+      passwordHash,
     },
   });
 
