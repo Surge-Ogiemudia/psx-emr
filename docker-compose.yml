@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: psxemr
+      POSTGRES_PASSWORD: psxemr
+      POSTGRES_DB: psxemr
+    ports:
+      - "5432:5432"
+    volumes:
+      - psxemr-db:/var/lib/postgresql/data
+
+volumes:
+  psxemr-db:
