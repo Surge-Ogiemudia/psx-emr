@@ -13,24 +13,41 @@ tier is already a replica set, no extra config needed).
 ```bash
 npm install
 cp .env.example .env
+# edit .env: set AUTH_SECRET to the output of `openssl rand -base64 32`
 docker compose up -d      # local Mongo replica set on :27017 (skip if using Atlas)
 npx prisma db push        # syncs prisma/schema.prisma to the database
-npm run db:seed           # sample pharmacy, staff, and four patients
+npm run db:seed           # sample pharmacies, staff, and patients
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The seeded pharmacy is
-"Monak Pharmacy" and the seeded pharmacist is `pharmacist@monak.test`.
+Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to
+`/login`. Seeded logins:
+
+| Pharmacy | Email | Password |
+|---|---|---|
+| Monak Pharmacy | `pharmacist@monak.test` | `password123` |
+| Medlife Pharmacy | `pharmacist@medlife.test` | `medlife123` |
+
+Change these before any real use — they're seed data, not meant to survive
+past early demos.
 
 ### Deploying (e.g. Vercel)
 
-Set `DATABASE_URL` in the host's environment variables to your Atlas (or
-other hosted Mongo) connection string. `npm run build` runs `prisma db push`
-first — this is the correct workflow for Mongo (unlike SQL databases, Mongo
-has no migration history to apply; Prisma's `migrate` commands aren't
-supported on this connector at all). `db push` mainly syncs indexes
-(`@unique`, `@@index`) and refuses to run destructively without
-`--accept-data-loss`, so a build never silently drops data.
+Set two environment variables on the host:
+
+- `DATABASE_URL` — your Atlas (or other hosted Mongo) connection string.
+- `AUTH_SECRET` — required by NextAuth/Auth.js; sign-in throws `MissingSecret`
+  without it. Generate with `openssl rand -base64 32`. (Vercel sets `VERCEL=1`
+  automatically, which Auth.js uses to trust the deployment's host — no
+  `AUTH_TRUST_HOST` needed there specifically, but do set it if self-hosting
+  anywhere else.)
+
+`npm run build` runs `prisma db push` first — this is the correct workflow
+for Mongo (unlike SQL databases, Mongo has no migration history to apply;
+Prisma's `migrate` commands aren't supported on this connector at all).
+`db push` mainly syncs indexes (`@unique`, `@@index`) and refuses to run
+destructively without `--accept-data-loss`, so a build never silently drops
+data.
 
 ## What's here
 
@@ -67,17 +84,20 @@ external dependencies. Each has a `// TODO` at the call site:
   to run fully on-device via transformers.js. Validate real latency on
   target hardware before removing the stub; a 2B model in-browser is the
   highest-risk item in the PRD.
-- **`src/lib/face/client.ts`** — face-api.js (or a maintained alternative)
-  capture/match, scoped per pharmacy, threshold 0.6.
-  **Currently captures nothing — encoding pre-consent must be a persisted
-  operation only after consent is recorded (PRD Section 12 / NDPR).**
 - **`src/lib/pos.ts`** — the POS handoff. Currently mints a fake transaction
   id instead of posting to pos.psx.ng.
 
-## Multi-tenancy
+Face recognition is no longer stubbed — `src/components/face/FaceScanner.tsx`
+runs `@vladmandic/face-api` (a maintained face-api.js fork) fully client-side
+against the model weights in `public/models/`, and `src/app/api/patients/face-search/route.ts`
+matches embeddings by cosine similarity, scoped to the logged-in user's
+pharmacy. Still worth validating capture-before-consent handling (PRD Section
+12 / NDPR) before relying on it for real patients.
 
-`src/lib/tenant.ts` resolves the pharmacy from the request subdomain
-(`monak.emr.psx.ng` → subdomain `monak`), falling back to the first seeded
-pharmacy on localhost where there's no subdomain to key off of. There's no
-real staff auth yet — `getCurrentStaff` returns the first staff row for the
-resolved pharmacy so every write has a valid audit-log author.
+## Multi-tenancy and auth
+
+Staff sign in via `/login` (NextAuth/Auth.js credentials provider,
+`src/auth.ts`); `src/proxy.ts` gates every non-API route behind a session.
+`src/lib/tenant.ts` resolves the current pharmacy from the logged-in staff
+member's `pharmacyId` — no more subdomain-based resolution, so multi-tenancy
+now depends entirely on which account you're signed in as, not the URL.
