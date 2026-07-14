@@ -8,16 +8,46 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Credentials({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        phoneNumber: { label: "Phone Number", type: "text" },
         password: { label: "Password", type: "password" },
+        ssoToken: { label: "SSO Token", type: "text" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        // 1. SSO Token authentication path
+        if (credentials?.ssoToken) {
+          const tokenRecord = await prisma.ssoToken.findUnique({
+            where: { token: credentials.ssoToken as string },
+          });
+
+          if (tokenRecord && tokenRecord.expiresAt > new Date()) {
+            // Delete the token immediately to ensure single-use
+            await prisma.ssoToken.delete({ where: { id: tokenRecord.id } }).catch(() => {});
+
+            const staff = await prisma.staff.findUnique({
+              where: { id: tokenRecord.userId },
+              include: { pharmacy: true },
+            });
+
+            if (staff) {
+              return {
+                id: staff.id,
+                email: staff.phoneNumber, // Map phoneNumber to email field to fit NextAuth User type
+                name: staff.fullName,
+                pharmacyId: staff.pharmacyId,
+                role: staff.role,
+              };
+            }
+          }
+          return null;
+        }
+
+        // 2. Standard phone/password authentication path
+        if (!credentials?.phoneNumber || !credentials?.password) {
           return null;
         }
 
         const staff = await prisma.staff.findUnique({
-          where: { email: credentials.email as string },
+          where: { phoneNumber: credentials.phoneNumber as string },
           include: { pharmacy: true },
         });
 
@@ -36,7 +66,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         return {
           id: staff.id,
-          email: staff.email,
+          email: staff.phoneNumber,
           name: staff.fullName,
           pharmacyId: staff.pharmacyId,
           role: staff.role,
