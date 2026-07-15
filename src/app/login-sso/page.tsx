@@ -17,11 +17,16 @@ function SSOHandler() {
 
     signIn("credentials", {
       ssoToken: token,
-      callbackUrl: "/",
-      redirect: true,
+      redirect: false,
+    }).then((res) => {
+      if (res?.error) {
+        setError(`SSO failed: ${res.error}. Token might be invalid, expired, or user not found.`);
+      } else {
+        window.location.href = "/";
+      }
     }).catch((err) => {
       console.error(err);
-      setError("Failed to sign in via SSO.");
+      setError("Failed to sign in via SSO due to a network error.");
     });
   }, [token]);
 
