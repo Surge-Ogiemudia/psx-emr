@@ -16,7 +16,7 @@ datasource db {
 
 model Pharmacy {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  name        String   @map("pharmacyName")
+  name        String?  @map("pharmacyName")
   subdomain   String   @unique @map("slug")
   logoUrl     String?
   brandColor  String   @default("#0F6E56")
