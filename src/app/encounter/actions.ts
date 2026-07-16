@@ -19,8 +19,10 @@ export async function searchInventory(query: string) {
   });
 
   return products.map((p) => ({
+    productId: p.id,
     name: `${p.itemName} (${p.brand}) ${p.size}`,
-    defaultDose: "1 daily", // default instruction fallback
+    defaultDose: "", // leave blank for prescriber to fill
     qty: p.quantityInStock,
+    retailPrice: p.retailPrice,
   }));
 }

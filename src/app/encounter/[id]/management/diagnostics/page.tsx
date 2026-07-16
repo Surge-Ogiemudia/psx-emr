@@ -21,7 +21,7 @@ export default async function DiagnosticsPage({
         backLabel="Management Plan"
       />
       <div className="screen-content">
-        <DiagnosticsStep encounterId={id} patientId={encounter.patientId} />
+        <DiagnosticsStep encounterId={id} tests={[]} />
       </div>
       <FooterDisclaimer />
     </AppShell>

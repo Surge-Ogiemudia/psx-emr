@@ -54,6 +54,10 @@ model Staff {
   passwordHash String?
   createdAt  DateTime @default(now())
 
+  storeId             String?  @db.ObjectId
+  failedLoginAttempts Int?     @default(0)
+  lockedUntil         DateTime?
+
   pharmacy   Pharmacy    @relation(fields: [pharmacyId], references: [id])
   branch     Branch?     @relation(fields: [branchId], references: [id])
   encounters Encounter[]
@@ -88,6 +92,7 @@ model Patient {
 
   createdAt   DateTime  @default(now())
   lastVisitAt DateTime?
+  isWalkIn    Boolean   @default(false)
 
   pharmacy   Pharmacy    @relation(fields: [pharmacyId], references: [id])
   branch     Branch?     @relation(fields: [branchId], references: [id])
@@ -235,6 +240,7 @@ model ManagementPlan {
   counsellingNotes         String?
 
   linkedTransactionId String?
+  dispensaryFulfilled Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

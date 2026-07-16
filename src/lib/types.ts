@@ -36,6 +36,8 @@ export interface DispensedMedicine {
   dose: string;
   qty: number;
   interim: boolean;
+  productId?: string;
+  price?: number;
 }
 
 export interface ReferralDetails {

@@ -90,7 +90,7 @@ export default function TreatStep({ encounterId }: { encounterId: string }) {
       </div>
 
       <button className="cta-btn" disabled={medicines.length === 0 || closing} onClick={closeEncounter}>
-        {closing ? "Sending to POS…" : "Close encounter · Send to POS"}
+        {closing ? "Ending session…" : "End Session, Finish"}
       </button>
     </>
   );

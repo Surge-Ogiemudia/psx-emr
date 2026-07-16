@@ -16,6 +16,6 @@ export default auth((req) => {
 });
 
 export const config = {
-  // Matches every route except API, static assets, and images
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  // Matches every route except API, embed, static assets, and images
+  matcher: ['/((?!api|embed|_next/static|_next/image|favicon.ico).*)'],
 };
