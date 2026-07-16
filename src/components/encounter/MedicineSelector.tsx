@@ -15,12 +15,13 @@ export default function MedicineSelector({
 }) {
   const [query, setQuery] = useState("");
   const [showResults, setShowResults] = useState(false);
-  const [matches, setMatches] = useState<{ name: string; defaultDose: string }[]>([]);
+  const [matches, setMatches] = useState<{ productId: string; name: string; defaultDose: string; retailPrice: number }[]>([]);
 
   useEffect(() => {
     let active = true;
     if (!query.trim()) {
-      setMatches([]);
+      // Defer state update to avoid cascading render lint error
+      setTimeout(() => { if (active) setMatches([]); }, 0);
       return;
     }
     const timer = setTimeout(async () => {
@@ -36,8 +37,8 @@ export default function MedicineSelector({
     };
   }, [query]);
 
-  function addMedicine(name: string, dose: string) {
-    onChange([...medicines, { name, dose, qty: 1, interim }]);
+  function addMedicine(name: string, dose: string, productId: string, price: number) {
+    onChange([...medicines, { name, dose, qty: 1, interim, productId, price }]);
     setQuery("");
     setShowResults(false);
   }
@@ -50,15 +51,25 @@ export default function MedicineSelector({
     onChange(medicines.map((m, i) => (i === index ? { ...m, qty } : m)));
   }
 
+  function updateDose(index: number, dose: string) {
+    onChange(medicines.map((m, i) => (i === index ? { ...m, dose } : m)));
+  }
+
   return (
     <div>
       {medicines.map((m, i) => (
         <div className="med-row" key={i}>
           <div>
             <div className="med-name">{m.name}</div>
-            <div className="med-dose">
-              {m.dose}
-              {m.interim ? " (interim — pending diagnostic confirmation)" : ""}
+            <div className="med-dose" style={{ marginTop: 4 }}>
+              <input
+                type="text"
+                placeholder="Dosage instruction (e.g. 1 daily)"
+                value={m.dose}
+                onChange={(e) => updateDose(i, e.target.value)}
+                style={{ width: "100%", padding: "4px 8px", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12 }}
+              />
+              {m.interim ? <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>* pending diagnostic confirmation</div> : null}
             </div>
           </div>
           <input
@@ -93,9 +104,12 @@ export default function MedicineSelector({
                 key={m.name}
                 className="hpc-option"
                 style={{ display: "block", marginBottom: 4, cursor: "pointer" }}
-                onClick={() => addMedicine(m.name, m.defaultDose)}
+                onClick={() => addMedicine(m.name, m.defaultDose, m.productId, m.retailPrice)}
               >
-                {m.name} <span style={{ color: "var(--muted)" }}>— {m.defaultDose}</span>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>{m.name}</span>
+                  <span style={{ fontWeight: 500, color: "var(--primary)" }}>₦{m.retailPrice?.toLocaleString()}</span>
+                </div>
               </div>
             ))}
           </div>

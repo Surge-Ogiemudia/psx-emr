@@ -33,6 +33,9 @@ export default async function HomePage() {
         <PatientListClient initialPatients={JSON.parse(JSON.stringify(patients))} />
       </div>
       <FooterDisclaimer />
+      <Link href="/dispensary" className="fab-dispensary">
+        💊 Dispensary
+      </Link>
       <Link href="/encounter/new" className="fab-new-encounter">
         ＋ New Encounter
       </Link>

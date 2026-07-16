@@ -1,4 +1,5 @@
 import type { DispensedMedicine } from "./types";
+import { prisma } from "./prisma";
 
 /**
  * POS handoff stub (PRD Section 10). Real implementation posts a structured
