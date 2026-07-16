@@ -74,8 +74,9 @@ a {
   /* Establishes a containing block for fixed-position children (like the
      FAB) so they stay scoped to the shell's own box instead of jumping to
      the browser viewport's edge once the shell is no longer full-width
-     (e.g. on desktop, where .app-shell is centered with a max-width). */
-  transform: translateZ(0);
+     (e.g. on desktop, where .app-shell is centered with a max-width). 
+     REMOVED: transform: translateZ(0); because it traps the vertical fixed position to the scroll height. 
+     We use a fab-container instead. */
 }
 
 .top-bar {
@@ -273,7 +274,7 @@ a {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  z-index: 100;
+  pointer-events: auto;
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
@@ -297,7 +298,7 @@ a {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  z-index: 100;
+  pointer-events: auto;
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
