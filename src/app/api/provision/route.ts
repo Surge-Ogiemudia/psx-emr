@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       data: {
         id: id,
         name: name,
-        slug: slug,
+        subdomain: slug,
       },
     });
 

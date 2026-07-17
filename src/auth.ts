@@ -6,7 +6,7 @@ import { prisma } from "./lib/prisma";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
-const { handlers, signIn, signOut, auth: nextAuth } = NextAuth({
+export const { handlers, auth, signIn, signOut } = NextAuth({
   cookies: {
     sessionToken: {
       name: process.env.NODE_ENV === "production" ? "__Secure-authjs.session-token" : "authjs.session-token",
@@ -105,7 +105,7 @@ const { handlers, signIn, signOut, auth: nextAuth } = NextAuth({
               data: {
                 id: user.id,
                 name: user.businessName || user.name || "My Pharmacy",
-                slug: user.slug || user.id.slice(-6),
+                subdomain: user.slug || user.id.slice(-6),
               }
             });
           }
@@ -152,11 +152,12 @@ const { handlers, signIn, signOut, auth: nextAuth } = NextAuth({
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 
-export async function auth() {
-  let session = await nextAuth();
+export async function getSsoSession() {
+  let session = await auth();
   
   if (!session?.user) {
-    const token = cookies().get('session_token')?.value;
+    const cookieStore = await cookies();
+    const token = cookieStore.get('session_token')?.value;
     if (token) {
       try {
         const decoded = jwt.verify(token, JWT_SECRET) as any;
@@ -180,4 +181,4 @@ export async function auth() {
   return session;
 }
 
-export { handlers, signIn, signOut };
+// Removed duplicate export
