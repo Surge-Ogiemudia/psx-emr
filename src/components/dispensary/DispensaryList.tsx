@@ -29,14 +29,17 @@ export default function DispensaryList({
   prescriptions,
   walkIns = [],
   isEmbed = false,
+  isWidget = false,
   pharmacyId,
 }: {
   prescriptions: Prescription[];
   walkIns?: { id: string; fullName: string; phoneNumber: string }[];
   isEmbed?: boolean;
+  isWidget?: boolean;
   pharmacyId?: string;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedRx, setSelectedRx] = useState<any | null>(null);
   const [search, setSearch] = useState("");
   const [creatingWalkIn, setCreatingWalkIn] = useState(false);
   const [walkInPhone, setWalkInPhone] = useState("");
@@ -136,59 +139,73 @@ export default function DispensaryList({
     return () => window.removeEventListener("message", onMessage);
   }, [router]);
 
+  useEffect(() => {
+    // Auto-refresh the list every 10 seconds for real-time updates
+    const interval = setInterval(() => {
+      router.refresh();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [router]);
+
   if (isEmbed) {
     return (
-      <div style={{ width: "100%", position: "relative", fontFamily: "inherit" }}>
+      <div style={{ width: "100%", position: "relative", fontFamily: "'Outfit', sans-serif", padding: isWidget ? "16px" : "0" }}>
         <style dangerouslySetInnerHTML={{ __html: `
+          @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
           .embed-input {
             width: 100%;
-            border-radius: 0.5rem;
-            border: 1px solid #d4d4d8;
-            padding: 0.5rem 0.75rem;
-            font-size: 0.875rem;
+            border-radius: ${isWidget ? '0.75rem' : '0.5rem'};
+            border: ${isWidget ? '2px solid transparent' : '1px solid #d4d4d8'};
+            background: ${isWidget ? 'linear-gradient(#fff, #fff) padding-box, linear-gradient(135deg, #0f766e 0%, #c026d3 100%) border-box' : '#fff'};
+            padding: ${isWidget ? '0.65rem 1rem 0.65rem 2.25rem' : '0.5rem 0.75rem'};
+            font-size: ${isWidget ? '0.85rem' : '0.875rem'};
             outline: none;
             box-sizing: border-box;
-            transition: all 0.2s;
-            background: #fff;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             color: #18181b;
+            ${isWidget ? 'box-shadow: 0 4px 12px -2px rgba(15, 118, 110, 0.15);' : ''}
           }
           .embed-input:focus {
-            border-color: #0d9488;
-            box-shadow: 0 0 0 1px #0d9488;
+            box-shadow: ${isWidget ? '0 8px 16px -4px rgba(15, 118, 110, 0.25), 0 0 0 1px rgba(192, 38, 211, 0.3)' : '0 0 0 1px #0d9488'};
           }
           .embed-suggestions {
-            margin-top: 0.25rem;
-            max-height: 16rem;
-            overflow-y: auto;
-            border-radius: 0.5rem;
+            margin-top: ${isWidget ? '0.5rem' : '0.25rem'};
+            max-height: ${isWidget ? 'none' : '16rem'};
+            overflow-y: ${isWidget ? 'visible' : 'auto'};
+            border-radius: ${isWidget ? '0.75rem' : '0.5rem'};
             border: 1px solid #e4e4e7;
             background-color: #ffffff;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            box-shadow: ${isWidget ? '0 10px 30px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' : '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'};
             display: flex;
             flex-direction: column;
+            padding: ${isWidget ? '0.375rem 0' : '0'};
+            gap: 0;
           }
           .embed-suggestion-section {
-            padding: 0.25rem 0.75rem;
+            padding: ${isWidget ? '0.5rem 0.5rem 0.25rem' : '0.25rem 0.75rem'};
             font-size: 0.7rem;
             font-weight: 700;
             text-transform: uppercase;
             color: #a1a1aa;
-            background: #fafafa;
-            border-bottom: 1px solid #f4f4f5;
+            background: transparent;
+            border-bottom: ${isWidget ? 'none' : '1px solid #f4f4f5'};
             letter-spacing: 0.05em;
           }
           .embed-suggestion-btn {
             width: 100%;
-            padding: 0.5rem 0.75rem;
+            padding: ${isWidget ? '0.65rem 0.75rem' : '0.5rem 0.75rem'};
             text-align: left;
             font-size: 0.875rem;
-            background: none;
+            background: transparent;
             cursor: pointer;
             border: none;
             border-bottom: 1px solid #f4f4f5;
+            border-radius: 0;
+            transition: all 0.15s ease;
           }
           .embed-suggestion-btn:hover {
-            background-color: #f4f4f5;
+            background-color: ${isWidget ? '#f4f4f5' : '#f4f4f5'};
+            ${isWidget ? 'transform: scale(0.995);' : ''}
           }
           .embed-suggestion-name {
             font-weight: 600;
@@ -198,6 +215,9 @@ export default function DispensaryList({
             font-size: 0.75rem;
             color: #71717a;
             margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
           }
           .embed-create-btn {
             width: 100%;
@@ -219,32 +239,93 @@ export default function DispensaryList({
             cursor: not-allowed;
           }
         `}} />
-        <input
-          type="text"
-          placeholder="Search customer name or phone..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="embed-input"
-        />
-        {search && (pending.length > 0 || matchedWalkIns.length > 0 || search.trim().length > 0) && (
+        <div style={{ position: "relative" }}>
+          {isWidget && (
+            <svg 
+              style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#a1a1aa", width: "18px", height: "18px", pointerEvents: "none" }} 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          )}
+          <input
+            type="text"
+            placeholder={isWidget ? "Search patient or phone..." : "Search customer name or phone..."}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              if (selectedRx) setSelectedRx(null);
+            }}
+            className="embed-input"
+          />
+          {search && (
+            <button 
+              onClick={() => { setSearch(""); setSelectedRx(null); }}
+              style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#a1a1aa", fontSize: "1.25rem", lineHeight: 1 }}
+            >
+              &times;
+            </button>
+          )}
+        </div>
+        
+        {selectedRx ? (
+          <div style={{ 
+            marginTop: isWidget ? "0" : "0.5rem", 
+            padding: "0.25rem 0", 
+          }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+              {selectedRx.medicines.map((med: any, i: number) => (
+                <div key={i} style={{ display: "flex", gap: "0.75rem", fontSize: "0.875rem", padding: "0.5rem 0.5rem", borderBottom: isWidget ? "1px solid #f4f4f5" : "none", background: isWidget ? "transparent" : "#fafafa", borderRadius: isWidget ? "0" : "0.375rem" }}>
+                  <div style={{ fontWeight: 700, color: "#a1a1aa", marginTop: "1px", minWidth: "16px", fontSize: "0.8rem" }}>{i + 1}.</div>
+                  <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+                    <div style={{ fontWeight: 600, color: "#27272a" }}>{med.name}</div>
+                    <div style={{ display: "flex", gap: "0.5rem", color: "#52525b", fontSize: "0.75rem", marginTop: "0.35rem", alignItems: "center" }}>
+                      {med.dose && <span style={{ background: "#fef3c7", color: "#92400e", padding: "0.125rem 0.375rem", borderRadius: "0.25rem", fontWeight: 500 }}>{med.dose}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : ((isWidget || search) && (pending.length > 0 || (!isWidget && matchedWalkIns.length > 0) || search.trim().length > 0)) && (
           <div className="embed-suggestions">
             {pending.length > 0 && (
               <>
-                <div className="embed-suggestion-section">EMR Prescriptions</div>
-                {pending.map((rx) => (
+                {!isWidget && <div className="embed-suggestion-section">EMR Prescriptions</div>}
+                {pending.map((rx, i) => (
                   <button
                     key={rx.id}
-                    onClick={() => { handlePopulatePOS(rx); setSearch(""); }}
+                    onClick={() => {
+                      if (isWidget) {
+                        setSelectedRx(rx);
+                        setSearch(`${rx.patientName} (${rx.medicines.length} ${rx.medicines.length === 1 ? 'item' : 'items'})`);
+                      } else {
+                        handlePopulatePOS(rx);
+                        setSearch("");
+                      }
+                    }}
                     className="embed-suggestion-btn"
+                    style={isWidget ? { display: "flex", gap: "0.75rem", alignItems: "flex-start", borderBottom: i === pending.length - 1 ? "none" : "1px solid #f4f4f5" } : {}}
                   >
-                    <div className="embed-suggestion-name">{rx.patientName}</div>
-                    <div className="embed-suggestion-meta">{rx.patientPhone} &middot; {rx.medicines.length} pending items</div>
+                    {isWidget && <div style={{ fontWeight: 700, color: "#a1a1aa", marginTop: "1px", minWidth: "16px", fontSize: "0.8rem" }}>{i + 1}.</div>}
+                    <div style={isWidget ? { display: "flex", flexDirection: "column", flex: 1 } : {}}>
+                      <div className="embed-suggestion-name">{rx.patientName}</div>
+                      <div className="embed-suggestion-meta">{rx.patientPhone} &middot; {rx.medicines.length} {rx.medicines.length === 1 ? (isWidget ? 'item' : 'pending item') : (isWidget ? 'items' : 'pending items')}</div>
+                    </div>
                   </button>
                 ))}
               </>
             )}
             
-            {matchedWalkIns.length > 0 && (
+            {isWidget && pending.length === 0 && (
+              <div style={{ padding: "1rem", fontSize: "0.875rem", color: "#a1a1aa", textAlign: "center" }}>
+                No prescriptions found matching "{search}"
+              </div>
+            )}
+            
+            {(!isWidget && matchedWalkIns.length > 0) && (
               <>
                 <div className="embed-suggestion-section">Walk-in Customers</div>
                 {matchedWalkIns.map((w) => (
@@ -273,7 +354,7 @@ export default function DispensaryList({
               </>
             )}
 
-            {search.trim().length > 0 && (
+            {(!isWidget && search.trim().length > 0) && (
               <div style={{ borderTop: "1px solid #ccfbf1", background: "#f0fdfa" }}>
                 {!creatingWalkIn ? (
                   <button 
@@ -307,10 +388,10 @@ export default function DispensaryList({
                         fontSize: "0.875rem",
                         fontWeight: 600,
                         cursor: isPending || !walkInPhone.trim() ? "not-allowed" : "pointer",
-                        opacity: isPending || !walkInPhone.trim() ? 0.7 : 1
+                        opacity: (isPending || !walkInPhone.trim()) ? 0.6 : 1
                       }}
                     >
-                      {isPending ? "Saving..." : "Save"}
+                      {isPending ? "Adding..." : "Save"}
                     </button>
                   </div>
                 )}
