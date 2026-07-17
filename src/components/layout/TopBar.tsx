@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { auth, signOut } from "@/auth";
+import { getSsoSession, signOut } from "@/auth";
 
 export default async function TopBar({
   title,
@@ -12,7 +12,7 @@ export default async function TopBar({
   backHref?: string;
   backLabel?: string;
 }) {
-  const session = await auth();
+  const session = await getSsoSession();
   const userName = session?.user?.name || "";
   const initials = userName
     ? userName
