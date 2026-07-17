@@ -1,12 +1,27 @@
 import DispensaryList from "@/components/dispensary/DispensaryList";
 import { prisma } from "@/lib/prisma";
+import { getCurrentPharmacy } from "@/lib/tenant";
 
 export default async function EmbedDispensaryPage({
   searchParams,
 }: {
   searchParams: Promise<{ patientId?: string; pharmacyId?: string }>;
 }) {
-  const { patientId, pharmacyId } = await searchParams;
+  const { patientId, pharmacyId: queryPharmacyId } = await searchParams;
+  const sessionPharmacy = await getCurrentPharmacy();
+  let pharmacyId = queryPharmacyId || sessionPharmacy?.id;
+
+  // If a slug is passed (not a valid ObjectId), resolve it to the pharmacy ID
+  if (pharmacyId && !pharmacyId.match(/^[0-9a-fA-F]{24}$/)) {
+    const p = await prisma.pharmacy.findUnique({
+      where: { subdomain: pharmacyId }
+    });
+    if (p) {
+      pharmacyId = p.id;
+    } else {
+      pharmacyId = undefined;
+    }
+  }
 
   if (!patientId && !pharmacyId) {
     return (
@@ -70,10 +85,13 @@ export default async function EmbedDispensaryPage({
     select: { id: true, fullName: true, phoneNumber: true },
   });
 
+  const searchParamsAwaited = await searchParams;
+  const isWidget = (searchParamsAwaited as any).widget === "true";
+
   return (
     <div style={{ background: "transparent" }}>
       <style dangerouslySetInnerHTML={{ __html: "html, body { height: auto !important; min-height: 0 !important; background: transparent !important; }" }} />
-      <DispensaryList prescriptions={JSON.parse(JSON.stringify(prescriptions))} walkIns={walkIns} isEmbed={true} pharmacyId={pharmacyId} />
+      <DispensaryList prescriptions={JSON.parse(JSON.stringify(prescriptions))} walkIns={walkIns} isEmbed={true} isWidget={isWidget} pharmacyId={pharmacyId} />
     </div>
   );
 }
