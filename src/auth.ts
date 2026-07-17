@@ -3,7 +3,10 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./lib/prisma";
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+import jwt from "jsonwebtoken";
+import { cookies } from "next/headers";
+
+const { handlers, signIn, signOut, auth: nextAuth } = NextAuth({
   cookies: {
     sessionToken: {
       name: process.env.NODE_ENV === "production" ? "__Secure-authjs.session-token" : "authjs.session-token",
@@ -107,7 +110,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id;
         token.pharmacyId = (user as any).pharmacyId;
-        token.role = (user as any).role;
+        // Map Main PSX 'pharmacy' role to EMR 'admin' role
+        token.role = (user as any).role === 'pharmacy' ? 'admin' : (user as any).role;
       }
       return token;
     },
@@ -127,3 +131,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     strategy: "jwt",
   },
 });
+
+const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+
+export async function auth() {
+  let session = await nextAuth();
+  
+  if (!session?.user) {
+    const token = cookies().get('session_token')?.value;
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        const mappedRole = decoded.role === 'pharmacy' ? 'admin' : decoded.role;
+        session = {
+          user: {
+            id: decoded.userId,
+            name: decoded.name || 'User',
+            pharmacyId: decoded.pharmacyId || decoded.userId,
+            role: mappedRole,
+            email: decoded.email || decoded.phoneNumber,
+          },
+          expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        } as any;
+      } catch (e) {
+        // Ignore invalid token
+      }
+    }
+  }
+  
+  return session;
+}
+
+export { handlers, signIn, signOut };

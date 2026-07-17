@@ -4,9 +4,10 @@ import Link from "next/link";
 import FooterDisclaimer from "@/components/layout/FooterDisclaimer";
 import PatientListClient from "@/components/patient/PatientListClient";
 import { prisma } from "@/lib/prisma";
-import { getCurrentPharmacy } from "@/lib/tenant";
+import { getCurrentPharmacy, requireEmrAccess } from "@/lib/tenant";
 
 export default async function HomePage() {
+  await requireEmrAccess();
   const pharmacy = await getCurrentPharmacy();
 
   const patients = pharmacy

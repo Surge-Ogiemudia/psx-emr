@@ -21,3 +21,20 @@ export async function getCurrentStaff(pharmacyId: string) {
     where: { phoneNumber: session.user.email },
   });
 }
+
+import { redirect } from "next/navigation";
+
+export async function requireEmrAccess() {
+  const session = await auth();
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  const role = (session.user as any).role;
+  // Block non-authorized staff roles from EMR
+  if (["store_manager", "store_keeper", "staff"].includes(role)) {
+    redirect("/login?error=AccessDenied");
+  }
+
+  return session;
+}
