@@ -15,8 +15,10 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@types/jsonwebtoken": "^9.0.10",
     "@vladmandic/face-api": "^1.7.15",
     "bcryptjs": "^3.0.3",
+    "jsonwebtoken": "^9.0.3",
     "next": "16.2.10",
     "next-auth": "^5.0.0-beta.31",
     "prisma": "^5.22.0",
