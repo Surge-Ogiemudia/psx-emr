@@ -77,30 +77,48 @@ const { handlers, signIn, signOut, auth: nextAuth } = NextAuth({
           return null;
         }
 
-        const staff = await prisma.staff.findUnique({
-          where: { phoneNumber: credentials.phoneNumber as string },
-          include: { pharmacy: true },
+        const phoneNumber = String(credentials.phoneNumber).trim();
+        const password = String(credentials.password);
+
+        // Authenticate against Main PSX
+        const mainPsxUrl = process.env.NODE_ENV === 'production' ? 'https://www.psx.ng' : 'http://localhost:3000';
+        const loginRes = await fetch(`${mainPsxUrl}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber, password })
         });
 
-        if (!staff || !staff.passwordHash) {
+        if (!loginRes.ok) {
           return null;
         }
 
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password as string,
-          staff.passwordHash
-        );
+        const data = await loginRes.json();
+        const user = data.user;
 
-        if (!isPasswordValid) {
-          return null;
+        if (!user || !user.id) return null;
+
+        // Lazy Provisioning for Pharmacy Role
+        if (user.role === 'pharmacy') {
+          let pharmacy = await prisma.pharmacy.findUnique({ where: { id: user.id } });
+          if (!pharmacy) {
+            pharmacy = await prisma.pharmacy.create({
+              data: {
+                id: user.id,
+                name: user.businessName || user.name || "My Pharmacy",
+                slug: user.slug || user.id.slice(-6),
+              }
+            });
+          }
         }
+
+        const mappedRole = user.role === 'pharmacy' ? 'admin' : user.role;
 
         return {
-          id: staff.id,
-          email: staff.phoneNumber,
-          name: staff.fullName,
-          pharmacyId: staff.pharmacyId,
-          role: staff.role,
+          id: user.id,
+          email: user.email || user.phoneNumber,
+          name: user.name,
+          pharmacyId: user.pharmacyId || user.id,
+          role: mappedRole,
         };
       },
     }),
