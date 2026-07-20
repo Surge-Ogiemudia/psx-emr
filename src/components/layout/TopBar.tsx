@@ -50,10 +50,7 @@ export default async function TopBar({
             fontWeight: 600,
             textDecoration: "none",
             transition: "color 0.2s"
-          }}
-          onMouseOver={(e) => e.currentTarget.style.color = "white"}
-          onMouseOut={(e) => e.currentTarget.style.color = "rgba(255, 255, 255, 0.8)"}
-          >
+          }}>
             ← {backLabel ?? "Back"}
           </Link>
         )}
@@ -85,8 +82,6 @@ export default async function TopBar({
                   border: "none",
                   transition: "color 0.2s"
                 }}
-                onMouseOver={(e) => e.currentTarget.style.color = "white"}
-                onMouseOut={(e) => e.currentTarget.style.color = "rgba(255,255,255,0.7)"}
               >
                 Log Out
               </button>
