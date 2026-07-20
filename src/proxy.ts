@@ -19,9 +19,9 @@ export default auth((req) => {
     return Response.redirect(new URL('/login', req.nextUrl));
   }
 
-  // Redirect logged-in users away from the login page
+  // Removed redirect from login page to prevent infinite loops when cookies are expired
   if (isLoggedIn && isAuthRoute) {
-    return Response.redirect(new URL('/', req.nextUrl));
+    // Just let them render the login page, they can re-authenticate
   }
 });
 
