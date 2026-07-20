@@ -7,6 +7,7 @@ import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   cookies: {
     sessionToken: {
       name: process.env.NODE_ENV === "production" ? "__Secure-authjs.session-token" : "authjs.session-token",
