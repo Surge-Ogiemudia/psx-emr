@@ -81,24 +81,41 @@ export default function ComplaintStep({
     <>
       <AllergyBanner allergies={allergies} />
 
-      <div className="complaint-grid">
-        {INPUT_MODES.map((m) => (
-          <div
-            key={m.key}
-            className={`complaint-btn ${activeModes.has(m.key) ? "active" : ""}`}
-            onClick={() => (m.key === "voice" ? recordVoice() : toggleMode(m.key))}
-          >
-            <span className="cb-icon">{m.icon}</span>
-            <span className="cb-label">
-              {m.key === "voice" && recording ? "Recording…" : m.label}
-            </span>
-          </div>
-        ))}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px", marginBottom: "20px" }}>
+        {INPUT_MODES.map((m) => {
+          const isActive = activeModes.has(m.key);
+          return (
+            <button
+              key={m.key}
+              style={{
+                display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
+                padding: "16px 8px", borderRadius: "14px", border: "none", cursor: "pointer",
+                background: isActive ? "linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%)" : "#f4f4f5",
+                color: isActive ? "white" : "#52525b",
+                boxShadow: isActive ? "0 8px 20px -4px rgba(79, 70, 229, 0.4)" : "none",
+                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+              }}
+              onClick={() => (m.key === "voice" ? recordVoice() : toggleMode(m.key))}
+            >
+              <span style={{ fontSize: "24px" }}>{m.icon}</span>
+              <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                {m.key === "voice" && recording ? "Recording…" : m.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {activeModes.has("text") && (
         <textarea
-          className="field complaint-full"
+          style={{
+            width: "100%", minHeight: "140px", padding: "16px", borderRadius: "16px",
+            border: "1px solid #e4e4e7", background: "#ffffff", fontSize: "15px", lineHeight: 1.6,
+            color: "#18181b", outline: "none", resize: "vertical", marginBottom: "16px",
+            boxShadow: "inset 0 2px 4px rgba(0,0,0,0.02)"
+          }}
+          onFocus={(e) => e.target.style.borderColor = "#0ea5e9"}
+          onBlur={(e) => e.target.style.borderColor = "#e4e4e7"}
           placeholder="Type the complaint, or combine with voice/photo/file above…"
           value={textInput}
           onChange={(e) => setTextInput(e.target.value)}
@@ -106,38 +123,46 @@ export default function ComplaintStep({
       )}
 
       {voiceTranscript && (
-        <div className="complaint-full">{voiceTranscript}</div>
+        <div style={{ padding: "16px", background: "#f0fdfa", borderRadius: "16px", border: "1px solid #ccfbf1", color: "#0f766e", fontSize: "15px", lineHeight: 1.6, marginBottom: "16px" }}>
+          <strong>🎙️ Transcript:</strong> {voiceTranscript}
+        </div>
       )}
 
       {activeModes.has("photo") && (
-        <div className="field" style={{ textAlign: "center", color: "var(--muted)" }}>
+        <div style={{ padding: "24px", textAlign: "center", background: "#f4f4f5", borderRadius: "16px", color: "#71717a", fontSize: "13px", fontWeight: 600, border: "1px dashed #d4d4d8", marginBottom: "16px" }}>
           📷 Photo capture wires up to device camera — stubbed for now
         </div>
       )}
       {activeModes.has("file") && (
-        <div className="field" style={{ textAlign: "center", color: "var(--muted)" }}>
+        <div style={{ padding: "24px", textAlign: "center", background: "#f4f4f5", borderRadius: "16px", color: "#71717a", fontSize: "13px", fontWeight: 600, border: "1px dashed #d4d4d8", marginBottom: "16px" }}>
           📎 File upload — stubbed for now
         </div>
       )}
 
       {processing && (
-        <div className="ai-processing">
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "16px", background: "linear-gradient(to right, #faf5ff, #f3e8ff)", borderRadius: "16px", color: "#7e22ce", marginBottom: "16px" }}>
           <div className="ai-dot" />
-          <span className="ai-text">Gemma is reading your input and segmenting complaints…</span>
+          <span style={{ fontSize: "13px", fontWeight: 600 }}>Gemma is reading your input and segmenting complaints…</span>
         </div>
       )}
 
       {segments && !processing && (
-        <div className="ai-processing">
-          <div className="ai-dot" />
-          <span className="ai-text">
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "16px", background: "linear-gradient(to right, #f0fdf4, #dcfce7)", borderRadius: "16px", color: "#15803d", marginBottom: "16px" }}>
+          <div className="ai-dot" style={{ animation: "none", background: "#22c55e" }} />
+          <span style={{ fontSize: "13px", fontWeight: 600 }}>
             Identified {segments.length} complaint segment{segments.length !== 1 ? "s" : ""}:{" "}
             {segments.map((s) => s.label).join(", ")}
           </span>
         </div>
       )}
 
-      <button className="cta-btn" disabled={!canContinue} onClick={continueToHpc}>
+      <button style={{
+        width: "100%", padding: "16px", borderRadius: "16px", border: "none",
+        background: canContinue ? "linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%)" : "#e4e4e7",
+        color: canContinue ? "white" : "#a1a1aa", fontSize: "15px", fontWeight: 700,
+        cursor: canContinue ? "pointer" : "not-allowed", boxShadow: canContinue ? "0 8px 24px -4px rgba(79, 70, 229, 0.4)" : "none",
+        transition: "all 0.2s", marginTop: "8px"
+      }} disabled={!canContinue} onClick={continueToHpc}>
         {saving ? "Saving…" : "Continue to HPC"}
       </button>
     </>

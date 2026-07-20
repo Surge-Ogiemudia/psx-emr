@@ -60,22 +60,43 @@ export default function PatientListClient({
   }
 
   return (
-    <>
-      <div className="search-bar">
-        <span className="icon">🔍</span>
-        <input
-          autoFocus={autoFocusSearch}
-          placeholder="Search name or phone…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <button className="face-btn" onClick={() => {
-          setShowFaceScanner(!showFaceScanner);
-          setFaceMatches([]);
-          setFaceSearchError(null);
-        }}>
-          📷 Face
-        </button>
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <div style={{ position: "relative" }}>
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%)",
+          borderRadius: "16px", filter: "blur(12px)", zIndex: 0
+        }}></div>
+        <div style={{ position: "relative", zIndex: 1, borderRadius: "14px", background: "linear-gradient(#fff, #fff) padding-box, linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%) border-box", border: "2px solid transparent", boxShadow: "0 8px 24px -4px rgba(14, 165, 233, 0.15)", display: "flex", alignItems: "center", padding: "4px 6px" }}>
+          <span style={{ fontSize: "16px", color: "#6366f1", paddingLeft: "12px", paddingRight: "8px" }}>🔍</span>
+          <input
+            autoFocus={autoFocusSearch}
+            placeholder="Search name or phone…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{ flex: 1, padding: "10px 4px", fontSize: "14px", border: "none", outline: "none", background: "transparent", color: "#18181b" }}
+          />
+          <button onClick={() => {
+            setShowFaceScanner(!showFaceScanner);
+            setFaceMatches([]);
+            setFaceSearchError(null);
+          }} style={{ 
+            background: "linear-gradient(135deg, #e0f2fe 0%, #e0e7ff 100%)", 
+            color: "#4338ca", 
+            border: "none", 
+            borderRadius: "10px", 
+            padding: "8px 12px", 
+            fontSize: "12px", 
+            fontWeight: 700, 
+            cursor: "pointer", 
+            display: "flex", 
+            alignItems: "center", 
+            gap: "6px",
+            boxShadow: "0 2px 8px rgba(99, 102, 241, 0.1)"
+          }}>
+            📷 Face
+          </button>
+        </div>
       </div>
 
       {showFaceScanner && (
@@ -183,15 +204,20 @@ export default function PatientListClient({
         </div>
       )}
 
-      <div className="section-header">
+      <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#71717a", paddingLeft: "4px", marginTop: "8px" }}>
         {query ? `Results for "${query}"` : "Recent patients"}
       </div>
 
-      {patients.length === 0 ? (
-        <div className="empty-state">No patients found.</div>
-      ) : (
-        patients.map((p) => <PatientRow key={p.id} patient={p} />)
-      )}
-    </>
+      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+        {patients.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "48px 20px", color: "#a1a1aa", background: "#f4f4f5", borderRadius: "16px", border: "1px dashed #d4d4d8" }}>
+            <div style={{ fontSize: "36px", marginBottom: "12px", opacity: 0.5 }}>👥</div>
+            <p style={{ fontSize: "15px", fontWeight: 600, margin: 0 }}>No patients found.</p>
+          </div>
+        ) : (
+          patients.map((p) => <PatientRow key={p.id} patient={p} />)
+        )}
+      </div>
+    </div>
   );
 }

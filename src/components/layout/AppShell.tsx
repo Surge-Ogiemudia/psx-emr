@@ -1,3 +1,7 @@
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  return <div className="app-shell">{children}</div>;
+  return (
+    <div style={{ backgroundColor: "#f8fafc", minHeight: "100vh", display: "flex", flexDirection: "column", maxWidth: "480px", margin: "0 auto", position: "relative" }}>
+      {children}
+    </div>
+  );
 }

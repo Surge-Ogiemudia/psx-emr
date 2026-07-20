@@ -56,68 +56,84 @@ export default function MedicineSelector({
   }
 
   return (
-    <div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
       {medicines.map((m, i) => (
-        <div className="med-row" key={i}>
-          <div>
-            <div className="med-name">{m.name}</div>
-            <div className="med-dose" style={{ marginTop: 4 }}>
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", background: "#f8fafc", padding: "12px", borderRadius: "12px", border: "1px solid #e4e4e7" }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a" }}>{m.name}</div>
+            <div style={{ marginTop: "6px" }}>
               <input
                 type="text"
                 placeholder="Dosage instruction (e.g. 1 daily)"
                 value={m.dose}
                 onChange={(e) => updateDose(i, e.target.value)}
-                style={{ width: "100%", padding: "4px 8px", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12 }}
+                style={{ width: "100%", padding: "8px 12px", border: "1px solid #e4e4e7", borderRadius: "8px", fontSize: "13px", outline: "none", transition: "border-color 0.2s" }}
+                onFocus={(e) => e.target.style.borderColor = "#0ea5e9"}
+                onBlur={(e) => e.target.style.borderColor = "#e4e4e7"}
               />
-              {m.interim ? <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>* pending diagnostic confirmation</div> : null}
+              {m.interim && <div style={{ fontSize: "11px", color: "#f59e0b", marginTop: "4px", fontWeight: 600 }}>* pending diagnostic confirmation</div>}
             </div>
           </div>
-          <input
-            type="number"
-            min={1}
-            value={m.qty}
-            onChange={(e) => updateQty(i, Number(e.target.value))}
-            style={{ width: 40, textAlign: "center", border: "1px solid var(--border)", borderRadius: 6, fontSize: 11 }}
-          />
-          <span
-            className={`med-qty ${m.interim ? "med-interim" : ""}`}
-            style={{ cursor: "pointer" }}
-            onClick={() => removeMedicine(i)}
-          >
-            ×{m.qty} ✕
-          </span>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+            <input
+              type="number"
+              min={1}
+              value={m.qty}
+              onChange={(e) => updateQty(i, Number(e.target.value))}
+              style={{ width: "48px", textAlign: "center", padding: "6px", border: "1px solid #e4e4e7", borderRadius: "8px", fontSize: "13px", outline: "none", transition: "border-color 0.2s" }}
+              onFocus={(e) => e.target.style.borderColor = "#0ea5e9"}
+              onBlur={(e) => e.target.style.borderColor = "#e4e4e7"}
+            />
+            <button
+              style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: "12px", fontWeight: 700, cursor: "pointer", padding: "4px 8px", borderRadius: "6px" }}
+              onMouseOver={(e) => e.currentTarget.style.background = "#fee2e2"}
+              onMouseOut={(e) => e.currentTarget.style.background = "transparent"}
+              onClick={() => removeMedicine(i)}
+            >
+              Remove
+            </button>
+          </div>
         </div>
       ))}
 
       {showResults ? (
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: "12px" }}>
           <input
-            className="field"
             autoFocus
             placeholder="Search inventory…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            style={{ width: "100%", padding: "12px 16px", borderRadius: "12px", border: "1px solid #0ea5e9", background: "#ffffff", fontSize: "14px", outline: "none", boxShadow: "0 0 0 3px rgba(14, 165, 233, 0.1)" }}
           />
-          <div style={{ maxHeight: 160, overflowY: "auto", marginTop: 6 }}>
+          <div style={{ maxHeight: "200px", overflowY: "auto", marginTop: "8px", display: "flex", flexDirection: "column", gap: "4px", padding: "4px", background: "#ffffff", border: "1px solid #e4e4e7", borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
             {matches.map((m) => (
-              <div
+              <button
                 key={m.name}
-                className="hpc-option"
-                style={{ display: "block", marginBottom: 4, cursor: "pointer" }}
+                style={{ width: "100%", textAlign: "left", padding: "10px 12px", border: "none", background: "transparent", borderRadius: "8px", cursor: "pointer", transition: "background 0.2s" }}
+                onMouseOver={(e) => e.currentTarget.style.background = "#f4f4f5"}
+                onMouseOut={(e) => e.currentTarget.style.background = "transparent"}
                 onClick={() => addMedicine(m.name, m.defaultDose, m.productId, m.retailPrice)}
               >
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>{m.name}</span>
-                  <span style={{ fontWeight: 500, color: "var(--primary)" }}>₦{m.retailPrice?.toLocaleString()}</span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: "14px", fontWeight: 600, color: "#18181b" }}>{m.name}</span>
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "#059669", background: "#d1fae5", padding: "2px 8px", borderRadius: "10px" }}>₦{m.retailPrice?.toLocaleString()}</span>
                 </div>
-              </div>
+              </button>
             ))}
+            {query.trim() && matches.length === 0 && (
+              <div style={{ padding: "12px", textAlign: "center", fontSize: "13px", color: "#71717a" }}>No matches found</div>
+            )}
           </div>
         </div>
       ) : (
-        <div className="link-action" style={{ marginTop: 8 }} onClick={() => setShowResults(true)}>
+        <button
+          style={{ width: "100%", marginTop: "12px", padding: "12px", background: "rgba(14, 165, 233, 0.1)", color: "#0ea5e9", border: "1px dashed #7dd3fc", borderRadius: "12px", fontSize: "14px", fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}
+          onMouseOver={(e) => { e.currentTarget.style.background = "rgba(14, 165, 233, 0.15)"; e.currentTarget.style.borderColor = "#38bdf8"; }}
+          onMouseOut={(e) => { e.currentTarget.style.background = "rgba(14, 165, 233, 0.1)"; e.currentTarget.style.borderColor = "#7dd3fc"; }}
+          onClick={() => setShowResults(true)}
+        >
           + Add {interim ? "interim " : ""}medicine from inventory
-        </div>
+        </button>
       )}
     </div>
   );
