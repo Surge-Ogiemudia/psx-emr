@@ -404,145 +404,180 @@ export default function DispensaryList({
   }
 
   return (
-    <div className="dispensary-list">
-      <div style={{ marginBottom: "16px" }}>
-        <input
-          type="text"
-          placeholder="Search customer name or phone..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
-        />
+    <div style={{ padding: "0 16px", fontFamily: "'Outfit', 'Inter', sans-serif" }}>
+      <div style={{ position: "relative", marginBottom: "24px" }}>
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "linear-gradient(135deg, rgba(15,118,110,0.1) 0%, rgba(192,38,211,0.1) 100%)",
+          borderRadius: "16px", filter: "blur(12px)", zIndex: 0
+        }}></div>
+        <div style={{ position: "relative", zIndex: 1, borderRadius: "12px", background: "linear-gradient(#fff, #fff) padding-box, linear-gradient(135deg, #0f766e 0%, #c026d3 100%) border-box", border: "2px solid transparent", boxShadow: "0 8px 24px -4px rgba(15, 118, 110, 0.15)" }}>
+          <input
+            type="text"
+            placeholder="Search customer name or phone..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: "100%", padding: "14px 20px 14px 44px", borderRadius: "10px", border: "none", outline: "none", fontSize: "0.95rem", color: "#18181b", background: "transparent"
+            }}
+          />
+          <svg style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "#0f766e", width: "20px", height: "20px" }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          {search && (
+            <button onClick={() => setSearch("")} style={{ position: "absolute", right: "16px", top: "50%", transform: "translateY(-50%)", color: "#a1a1aa", fontSize: "1.25rem" }}>&times;</button>
+          )}
+        </div>
       </div>
 
       {prescriptions.length === 0 && (
-        <div className="dispensary-empty" style={{ marginTop: 0 }}>
-          <div className="dispensary-empty-icon">💊</div>
-          <p>No prescriptions yet</p>
+        <div style={{ textAlign: "center", padding: "64px 20px", color: "#a1a1aa", background: "#fafafa", borderRadius: "20px", border: "1px dashed #e4e4e7" }}>
+          <div style={{ fontSize: "48px", marginBottom: "16px", filter: "grayscale(1) opacity(0.5)" }}>💊</div>
+          <p style={{ fontSize: "16px", fontWeight: 500 }}>No prescriptions yet</p>
+          <p style={{ fontSize: "13px", marginTop: "8px" }}>When patients have pending items, they'll appear here.</p>
         </div>
       )}
 
       {pending.length > 0 && (
-        <>
-          <div className="dispensary-section-label">
-            <span className="dispensary-dot pending" />
-            Pending ({pending.length})
+        <div style={{ marginBottom: "32px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px", paddingLeft: "4px" }}>
+            <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#f59e0b", boxShadow: "0 0 12px #f59e0b" }} />
+            <h3 style={{ fontSize: "13px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#52525b" }}>Action Required ({pending.length})</h3>
           </div>
-          {pending.map((rx) => (
-            <PrescriptionCard
-              key={rx.id}
-              rx={rx}
-              expanded={expandedId === rx.id}
-              onToggle={() => toggle(rx.id)}
-              onPopulate={() => handlePopulatePOS(rx)}
-              onDispense={() => handleDispense(rx.id)}
-            />
-          ))}
-        </>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {pending.map((rx) => (
+              <PrescriptionCard
+                key={rx.id}
+                rx={rx}
+                expanded={expandedId === rx.id}
+                onToggle={() => toggle(rx.id)}
+                onPopulate={() => handlePopulatePOS(rx)}
+                onDispense={() => handleDispense(rx.id)}
+              />
+            ))}
+          </div>
+        </div>
       )}
 
       {fulfilled.length > 0 && (
-        <>
-          <div className="dispensary-section-label" style={{ marginTop: pending.length > 0 ? 20 : 0 }}>
-            <span className="dispensary-dot fulfilled" />
-            Fulfilled ({fulfilled.length})
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px", paddingLeft: "4px" }}>
+            <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#10b981" }} />
+            <h3 style={{ fontSize: "13px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#52525b" }}>Recently Fulfilled ({fulfilled.length})</h3>
           </div>
-          {fulfilled.map((rx) => (
-            <PrescriptionCard
-              key={rx.id}
-              rx={rx}
-              expanded={expandedId === rx.id}
-              onToggle={() => toggle(rx.id)}
-              onPopulate={() => handlePopulatePOS(rx)}
-              onDispense={() => handleDispense(rx.id)}
-            />
-          ))}
-        </>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {fulfilled.map((rx) => (
+              <PrescriptionCard
+                key={rx.id}
+                rx={rx}
+                expanded={expandedId === rx.id}
+                onToggle={() => toggle(rx.id)}
+                onPopulate={() => handlePopulatePOS(rx)}
+                onDispense={() => handleDispense(rx.id)}
+              />
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
-function PrescriptionCard({
-  rx,
-  expanded,
-  onToggle,
-  onPopulate,
-  onDispense,
-}: {
-  rx: Prescription;
-  expanded: boolean;
-  onToggle: () => void;
-  onPopulate: () => void;
-  onDispense: () => void;
-}) {
-  const initials = rx.patientName
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
+function PrescriptionCard({ rx, expanded, onToggle, onPopulate, onDispense }: { rx: Prescription; expanded: boolean; onToggle: () => void; onPopulate: () => void; onDispense: () => void }) {
+  const initials = rx.patientName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   const timeAgo = getTimeAgo(rx.date);
 
   const handleClickHeader = () => {
     onToggle();
     if (!rx.fulfilled) {
-      onPopulate(); // Only populate if it's not fulfilled yet
+      onPopulate();
     }
   };
 
   return (
-    <div className={`dispensary-card ${rx.fulfilled ? "fulfilled" : ""}`}>
-      <button className="dispensary-card-header" onClick={handleClickHeader}>
-        <div className="dispensary-avatar">
+    <div style={{
+      background: rx.fulfilled ? "#fafafa" : "#ffffff",
+      borderRadius: "16px",
+      border: rx.fulfilled ? "1px solid #e4e4e7" : "1px solid #d4d4d8",
+      boxShadow: rx.fulfilled ? "none" : "0 4px 20px -6px rgba(0,0,0,0.08)",
+      overflow: "hidden",
+      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+      opacity: rx.fulfilled ? 0.7 : 1,
+      transform: expanded ? "scale(1.01)" : "scale(1)"
+    }}>
+      <button 
+        onClick={handleClickHeader}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", gap: "16px", padding: "16px", background: "transparent", border: "none", textAlign: "left", cursor: "pointer"
+        }}
+      >
+        <div style={{
+          width: "48px", height: "48px", borderRadius: "14px", flexShrink: 0,
+          background: rx.fulfilled ? "#e4e4e7" : "linear-gradient(135deg, #10b981 0%, #06b6d4 100%)",
+          display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden",
+          boxShadow: rx.fulfilled ? "none" : "0 4px 10px rgba(16, 185, 129, 0.3)"
+        }}>
           {rx.patientPhoto ? (
-            <img src={rx.patientPhoto} alt="" />
+            <img src={rx.patientPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : (
-            <span>{initials}</span>
+            <span style={{ fontSize: "16px", fontWeight: 700, color: rx.fulfilled ? "#a1a1aa" : "#ffffff" }}>{initials}</span>
           )}
         </div>
-        <div className="dispensary-info">
-          <div className="dispensary-name">{rx.patientName}</div>
-          <div className="dispensary-phone">{rx.patientPhone}</div>
+        
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: "16px", fontWeight: 700, color: "#18181b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{rx.patientName}</div>
+          <div style={{ fontSize: "13px", color: "#71717a", marginTop: "2px" }}>{rx.patientPhone}</div>
         </div>
-        <div className="dispensary-meta">
-          <div className="dispensary-pills">{rx.medicines.length} 💊</div>
-          <div className="dispensary-time">{timeAgo}</div>
+        
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          <div style={{ fontSize: "14px", fontWeight: 800, color: rx.fulfilled ? "#a1a1aa" : "#0f766e" }}>{rx.medicines.length} {rx.medicines.length === 1 ? 'item' : 'items'}</div>
+          <div style={{ fontSize: "11px", color: "#a1a1aa", marginTop: "4px", fontWeight: 500 }}>{timeAgo}</div>
         </div>
-        <div className={`dispensary-chevron ${expanded ? "open" : ""}`}>▾</div>
+        
+        <div style={{ color: "#a1a1aa", transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+        </div>
       </button>
 
       {expanded && (
-        <div className="dispensary-medicines">
-          {rx.medicines.map((med, i) => (
-            <div key={i} className="dispensary-med-row">
-              <div className="dispensary-med-name">{med.name}</div>
-              <div className="dispensary-med-detail">
-                {med.dose && <span>{med.dose}</span>}
-                {med.qty && <span> · Qty: {med.qty}</span>}
-                {med.interim && <span className="dispensary-interim-badge">Interim</span>}
+        <div style={{
+          borderTop: "1px solid #f4f4f5", background: "#fafafa", padding: "16px",
+          animation: "dispensary-slide-down 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+        }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
+            {rx.medicines.map((med, i) => (
+              <div key={i} style={{ display: "flex", gap: "12px", alignItems: "flex-start", background: "#ffffff", padding: "12px", borderRadius: "12px", border: "1px solid #f4f4f5", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+                <div style={{ fontWeight: 800, color: "#d4d4d8", fontSize: "14px", marginTop: "2px" }}>{i + 1}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "14px", fontWeight: 600, color: "#27272a" }}>{med.name}</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "6px" }}>
+                    {med.dose && <span style={{ background: "#fef3c7", color: "#92400e", fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "6px" }}>{med.dose}</span>}
+                    {med.qty && <span style={{ background: "#f3f4f6", color: "#52525b", fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "6px" }}>Qty: {med.qty}</span>}
+                    {med.interim && <span style={{ background: "#fee2e2", color: "#b91c1c", fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "6px" }}>INTERIM</span>}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
-          <div className="dispensary-prescriber">
-            Prescribed by {rx.staffName}
+            ))}
           </div>
           
-          {!rx.fulfilled && (
-            <div style={{ marginTop: 12, borderTop: "1px solid var(--border)", paddingTop: 12, display: "flex", justifyContent: "flex-end" }}>
-              <button 
-                className="cta-btn" 
-                style={{ background: "var(--green-mid)", color: "white", padding: "8px 16px", borderRadius: "8px", fontSize: "12px" }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDispense();
-                }}
-              >
-                ✓ Dispense
-              </button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #e4e4e7", paddingTop: "16px" }}>
+            <div style={{ fontSize: "12px", color: "#71717a", fontWeight: 500 }}>
+              Prescribed by <span style={{ color: "#27272a", fontWeight: 700 }}>{rx.staffName}</span>
             </div>
-          )}
+            {!rx.fulfilled && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onDispense(); }}
+                style={{
+                  background: "linear-gradient(135deg, #0f766e 0%, #115e59 100%)", color: "white", padding: "10px 20px", borderRadius: "10px", fontSize: "13px", fontWeight: 700, border: "none", cursor: "pointer", boxShadow: "0 4px 12px rgba(15, 118, 110, 0.2)", display: "flex", alignItems: "center", gap: "6px", transition: "all 0.2s"
+                }}
+                onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
+                onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}
+              >
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                Dispense Complete
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
