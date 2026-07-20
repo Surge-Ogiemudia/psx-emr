@@ -30,10 +30,12 @@ export async function requireEmrAccess() {
     redirect("/login");
   }
 
-  // Only admin and emr_user can access EMR routes
+  // Allow admin, emr_user, pharmacist, and staff to access EMR routes
   const user = session.user as any;
-  if (user.role !== "admin" && user.role !== "emr_user") {
-    redirect("/unauthorized"); // or wherever
+  const allowedRoles = ["admin", "emr_user", "pharmacist", "doctor", "staff"];
+  
+  if (!allowedRoles.includes(user.role)) {
+    redirect("/unauthorized");
   }
 }
 
