@@ -25,7 +25,7 @@ export async function getCurrentStaff(pharmacyId: string) {
 
 export async function requireEmrAccess() {
   const session = await getSsoSession();
-  
+
   if (!session?.user) {
     redirect("/login");
   }
