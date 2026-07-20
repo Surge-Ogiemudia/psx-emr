@@ -55,31 +55,47 @@ export default function AssessmentStep({
     <>
       <AllergyBanner allergies={allergies} />
 
-      <label className="field-label">Your impression</label>
+      <label style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#71717a", marginBottom: "8px", display: "block", paddingLeft: "4px" }}>
+        Your impression
+      </label>
       <textarea
-        className="field complaint-full"
-        style={{ color: "var(--ink)" }}
+        style={{
+          width: "100%", minHeight: "160px", padding: "16px", borderRadius: "16px",
+          border: "1px solid #e4e4e7", background: "#ffffff", fontSize: "15px", lineHeight: 1.6,
+          color: "#18181b", outline: "none", resize: "vertical", marginBottom: "24px",
+          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.02)", transition: "border-color 0.2s"
+        }}
+        onFocus={(e) => e.target.style.borderColor = "#0ea5e9"}
+        onBlur={(e) => e.target.style.borderColor = "#e4e4e7"}
         placeholder="Pharmaceutical assessment — your clinical impression…"
         value={impression}
         onChange={(e) => setImpression(e.target.value)}
       />
 
       {suggestion && (
-        <div className="gemma-suggestion">
-          <div className="gemma-label">✦ Gemma suggestion</div>
-          <div className="gemma-text">{suggestion}</div>
-          <div className="gemma-actions">
-            <span className="gemma-btn gemma-accept" onClick={acceptSuggestion}>
+        <div style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderRadius: "16px", border: "1px solid #e9d5ff", padding: "20px", marginBottom: "24px", boxShadow: "0 4px 20px -6px rgba(147, 51, 234, 0.15)" }}>
+          <div style={{ fontSize: "12px", fontWeight: 800, color: "#9333ea", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+            <span>✦</span> Gemma suggestion
+          </div>
+          <div style={{ fontSize: "15px", color: "#4c1d95", lineHeight: 1.6, marginBottom: "16px" }}>{suggestion}</div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "none", background: "#9333ea", color: "white", fontSize: "13px", fontWeight: 700, cursor: "pointer", boxShadow: "0 2px 8px rgba(147, 51, 234, 0.3)" }} onClick={acceptSuggestion}>
               Accept
-            </span>
-            <span className="gemma-btn gemma-ignore" onClick={() => setAccepted(false)}>
+            </button>
+            <button style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "1px solid #d8b4fe", background: "transparent", color: "#7e22ce", fontSize: "13px", fontWeight: 700, cursor: "pointer" }} onClick={() => setAccepted(false)}>
               Ignore
-            </span>
+            </button>
           </div>
         </div>
       )}
 
-      <button className="cta-btn" disabled={!impression.trim() || saving} onClick={continueToManagement}>
+      <button style={{
+        width: "100%", padding: "16px", borderRadius: "16px", border: "none",
+        background: impression.trim() ? "linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%)" : "#e4e4e7",
+        color: impression.trim() ? "white" : "#a1a1aa", fontSize: "15px", fontWeight: 700,
+        cursor: impression.trim() ? "pointer" : "not-allowed", boxShadow: impression.trim() ? "0 8px 24px -4px rgba(79, 70, 229, 0.4)" : "none",
+        transition: "all 0.2s", opacity: saving ? 0.7 : 1
+      }} disabled={!impression.trim() || saving} onClick={continueToManagement}>
         {saving ? "Saving…" : "Continue to Management"}
       </button>
     </>

@@ -97,28 +97,45 @@ export default function HpcStep({
   return (
     <>
       {state.map((s, segIdx) => (
-        <div key={s.segment.label} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div className="hpc-segment-label">
-            {segIdx === 0 ? "🤕" : "🤧"} {s.segment.label}
+        <div key={s.segment.label} style={{ background: "#ffffff", borderRadius: "16px", border: "1px solid #e4e4e7", padding: "20px", marginBottom: "20px", boxShadow: "0 4px 20px -6px rgba(0,0,0,0.05)" }}>
+          <div style={{ fontSize: "16px", fontWeight: 800, color: "#18181b", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px", textTransform: "capitalize" }}>
+            <span>{segIdx === 0 ? "🤕" : "🤧"}</span> {s.segment.label}
           </div>
-          {s.questions.map((q) => (
-            <div className="hpc-question" key={q.question}>
-              <div className="hpc-q-text">{q.question}</div>
-              <div className="hpc-options">
-                {q.options.map((opt) => (
-                  <span
-                    key={opt}
-                    className={`hpc-option ${s.answers[q.question] === opt ? "selected" : ""}`}
-                    onClick={() => selectAnswer(segIdx, q.question, opt)}
-                  >
-                    {opt}
-                  </span>
-                ))}
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "16px" }}>
+            {s.questions.map((q) => (
+              <div key={q.question} style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div style={{ fontSize: "14px", fontWeight: 600, color: "#3f3f46" }}>{q.question}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                  {q.options.map((opt) => {
+                    const isSelected = s.answers[q.question] === opt;
+                    return (
+                      <button
+                        key={opt}
+                        style={{
+                          padding: "8px 12px", borderRadius: "10px", border: "none", cursor: "pointer",
+                          fontSize: "13px", fontWeight: 600, transition: "all 0.2s",
+                          background: isSelected ? "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)" : "#f4f4f5",
+                          color: isSelected ? "white" : "#52525b",
+                          boxShadow: isSelected ? "0 4px 12px rgba(99, 102, 241, 0.3)" : "none"
+                        }}
+                        onClick={() => selectAnswer(segIdx, q.question, opt)}
+                      >
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
           <textarea
-            className="field"
+            style={{
+              width: "100%", minHeight: "80px", padding: "12px 16px", borderRadius: "12px",
+              border: "1px solid #e4e4e7", background: "#f8fafc", fontSize: "14px", lineHeight: 1.5,
+              color: "#18181b", outline: "none", resize: "vertical", transition: "border-color 0.2s"
+            }}
+            onFocus={(e) => { e.target.style.borderColor = "#0ea5e9"; e.target.style.background = "#ffffff"; }}
+            onBlur={(e) => { e.target.style.borderColor = "#e4e4e7"; e.target.style.background = "#f8fafc"; }}
             placeholder="Free text — anything else about this complaint…"
             value={s.freeText}
             onChange={(e) => setFreeText(segIdx, e.target.value)}
@@ -126,7 +143,13 @@ export default function HpcStep({
         </div>
       ))}
 
-      <button className="cta-btn" disabled={answeredCount === 0 || saving} onClick={continueToHistory}>
+      <button style={{
+        width: "100%", padding: "16px", borderRadius: "16px", border: "none",
+        background: answeredCount > 0 ? "linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%)" : "#e4e4e7",
+        color: answeredCount > 0 ? "white" : "#a1a1aa", fontSize: "15px", fontWeight: 700,
+        cursor: answeredCount > 0 ? "pointer" : "not-allowed", boxShadow: answeredCount > 0 ? "0 8px 24px -4px rgba(79, 70, 229, 0.4)" : "none",
+        transition: "all 0.2s", opacity: saving ? 0.7 : 1
+      }} disabled={answeredCount === 0 || saving} onClick={continueToHistory}>
         {saving ? "Saving…" : "Continue"}
       </button>
     </>
