@@ -29,7 +29,7 @@ export async function getCurrentStaff(pharmacyId: string) {
         id: session.user.id,
         pharmacyId: pharmacyId,
         fullName: session.user.name || "Admin",
-        phoneNumber: session.user.email,
+        phoneNumber: session.user.email || session.user.id,
         role: "admin",
       },
     });
