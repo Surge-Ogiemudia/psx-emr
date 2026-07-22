@@ -18,9 +18,24 @@ export async function getCurrentStaff(pharmacyId: string) {
   const session = await getSsoSession();
   if (!session?.user?.email) return null;
 
-  return prisma.staff.findUnique({
+  let staff = await prisma.staff.findUnique({
     where: { phoneNumber: session.user.email },
   });
+
+  if (!staff && (session.user as any).role === 'admin') {
+    // Auto-provision staff record for the admin
+    staff = await prisma.staff.create({
+      data: {
+        id: session.user.id,
+        pharmacyId: pharmacyId,
+        fullName: session.user.name || "Admin",
+        phoneNumber: session.user.email,
+        role: "admin",
+      },
+    });
+  }
+
+  return staff;
 }
 
 export async function requireEmrAccess() {
