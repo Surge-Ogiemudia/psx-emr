@@ -43,8 +43,47 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         phoneNumber: { label: "Phone Number", type: "text" },
         password: { label: "Password", type: "password" },
         ssoToken: { label: "SSO Token", type: "text" },
+        mainPsxToken: { label: "Main PSX Token", type: "text" },
       },
       async authorize(credentials) {
+        // Main PSX JWT authentication path (used by Terminal iframe bridge)
+        if (credentials?.mainPsxToken) {
+          try {
+            const decoded = jwt.verify(String(credentials.mainPsxToken), JWT_SECRET) as {
+              userId: string;
+              role: string;
+              email?: string;
+              pharmacyId?: string;
+            };
+
+            const mappedRole = decoded.role === 'pharmacy' ? 'admin' : decoded.role;
+
+            // Lazy provision pharmacy for pharmacy role
+            if (decoded.role === 'pharmacy') {
+              let pharmacy = await prisma.pharmacy.findUnique({ where: { id: decoded.userId } });
+              if (!pharmacy) {
+                pharmacy = await prisma.pharmacy.create({
+                  data: {
+                    id: decoded.userId,
+                    name: "My Pharmacy",
+                    subdomain: decoded.userId.slice(-6),
+                  }
+                });
+              }
+            }
+
+            return {
+              id: decoded.userId,
+              email: decoded.email || '',
+              name: decoded.email || 'User',
+              pharmacyId: decoded.pharmacyId || decoded.userId,
+              role: mappedRole,
+            };
+          } catch {
+            return null;
+          }
+        }
+
         // 1. SSO Token authentication path
         if (credentials?.ssoToken) {
           const tokenRecord = await prisma.ssoToken.findUnique({
