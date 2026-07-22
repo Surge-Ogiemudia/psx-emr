@@ -55,22 +55,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               email?: string;
               pharmacyId?: string;
               name?: string;
+              businessName?: string;
             };
 
             const mappedRole = decoded.role === 'pharmacy' ? 'admin' : decoded.role;
             let finalName = decoded.name || decoded.email || 'User';
+            const targetPharmacyId = decoded.role === 'pharmacy' ? decoded.userId : (decoded.pharmacyId || decoded.userId);
 
-            // Lazy provision pharmacy for pharmacy role
-            if (decoded.role === 'pharmacy') {
-              let pharmacy = await prisma.pharmacy.findUnique({ where: { id: decoded.userId } });
+            // Lazy provision pharmacy for all roles so the EMR can display the correct name
+            if (targetPharmacyId) {
+              let pharmacy = await prisma.pharmacy.findUnique({ where: { id: targetPharmacyId } });
               if (!pharmacy) {
                 pharmacy = await prisma.pharmacy.create({
                   data: {
-                    id: decoded.userId,
-                    name: "My Pharmacy",
-                    subdomain: decoded.userId.slice(-6),
+                    id: targetPharmacyId,
+                    name: decoded.businessName || "My Pharmacy",
+                    subdomain: targetPharmacyId.slice(-6),
                   }
                 });
+              } else if (pharmacy.name === "My Pharmacy" || pharmacy.name === "Pharmacy") {
+                if (decoded.businessName) {
+                  await prisma.pharmacy.update({
+                    where: { id: targetPharmacyId },
+                    data: { name: decoded.businessName }
+                  });
+                }
               }
             } else {
               // Try to fetch full name from EMR staff collection just in case Main PSX didn't have it
