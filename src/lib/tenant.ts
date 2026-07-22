@@ -16,10 +16,10 @@ export async function getCurrentPharmacy() {
 
 export async function getCurrentStaff(pharmacyId: string) {
   const session = await getSsoSession();
-  if (!session?.user?.email) return null;
+  if (!session?.user?.id) return null;
 
   let staff = await prisma.staff.findUnique({
-    where: { phoneNumber: session.user.email },
+    where: { id: session.user.id },
   });
 
   if (!staff && (session.user as any).role === 'admin') {
