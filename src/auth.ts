@@ -54,9 +54,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               role: string;
               email?: string;
               pharmacyId?: string;
+              name?: string;
             };
 
             const mappedRole = decoded.role === 'pharmacy' ? 'admin' : decoded.role;
+            let finalName = decoded.name || decoded.email || 'User';
 
             // Lazy provision pharmacy for pharmacy role
             if (decoded.role === 'pharmacy') {
@@ -70,12 +72,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                   }
                 });
               }
+            } else {
+              // Try to fetch full name from EMR staff collection just in case Main PSX didn't have it
+              const staff = await prisma.staff.findUnique({ where: { id: decoded.userId } });
+              if (staff && staff.fullName) {
+                finalName = staff.fullName;
+              }
             }
 
             return {
               id: decoded.userId,
               email: decoded.email || '',
-              name: decoded.email || 'User',
+              name: finalName,
               pharmacyId: decoded.pharmacyId || decoded.userId,
               role: mappedRole,
             };
