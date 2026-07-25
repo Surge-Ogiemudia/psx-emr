@@ -6,6 +6,7 @@ import TopBar from "@/components/layout/TopBar";
 import FooterDisclaimer from "@/components/layout/FooterDisclaimer";
 import LockedIdentity from "@/components/patient/LockedIdentity";
 import EncounterTimeline from "@/components/patient/EncounterTimeline";
+import NewEncounterButton from "@/components/patient/NewEncounterButton";
 import { prisma } from "@/lib/prisma";
 import { formatRelative } from "@/lib/format";
 
@@ -51,15 +52,16 @@ export default async function PatientRecordPage({
       <div className="screen-content">
         <LockedIdentity
           patient={JSON.parse(JSON.stringify(patient))}
-          locked={hasActiveEncounter}
+          locked={false}
         />
 
         <div className="section-header">Encounter history</div>
         <EncounterTimeline encounters={JSON.parse(JSON.stringify(patient.encounters))} />
 
-        <Link href={`/encounter/new?patientId=${patient.id}`} className="cta-btn">
-          + Start new encounter
-        </Link>
+        <NewEncounterButton 
+          patientId={patient.id} 
+          hasActiveEncounter={hasActiveEncounter} 
+        />
       </div>
       <FooterDisclaimer />
 

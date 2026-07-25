@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatDateTime } from "@/lib/format";
 import { parseJson } from "@/lib/types";
 import type { ComplaintSegment, DispensedMedicine, HpcAnswer, ReferralDetails, RosAnswerEntry } from "@/lib/types";
@@ -42,6 +43,17 @@ const STATUS_LABEL: Record<string, { label: string; bg: string; color: string }>
 
 export default function EncounterTimeline({ encounters }: { encounters: EncounterData[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const router = useRouter();
+
+  function getResumeLink(e: EncounterData) {
+    if (!e.complaint) return `/encounter/${e.id}/complaint`;
+    if (e.hpcs.length === 0) return `/encounter/${e.id}/hpc`;
+    if (!e.historySnapshot) return `/encounter/${e.id}/history`;
+    if (!e.ros) return `/encounter/${e.id}/ros`;
+    if (!e.assessment) return `/encounter/${e.id}/assessment`;
+    if (!e.managementPlan) return `/encounter/${e.id}/management`;
+    return `/encounter/${e.id}/done`;
+  }
 
   if (encounters.length === 0) {
     return (
@@ -70,7 +82,13 @@ export default function EncounterTimeline({ encounters }: { encounters: Encounte
                 boxShadow: "0 4px 20px -6px rgba(0,0,0,0.05)", transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                 borderColor: isPending ? "rgba(245,158,11,0.3)" : "#e4e4e7"
               }}>
-                <div onClick={() => setOpenId(open ? null : e.id)} style={{ padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer", background: open ? "#fafafa" : "#ffffff" }}>
+                <div onClick={() => {
+                  if (e.status === "active") {
+                    router.push(getResumeLink(e));
+                  } else {
+                    setOpenId(open ? null : e.id);
+                  }
+                }} style={{ padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer", background: open ? "#fafafa" : "#ffffff" }}>
                   <div>
                     <div style={{ fontSize: "11px", fontWeight: 800, color: "#a1a1aa", letterSpacing: "0.05em" }}>{formatDateTime(e.encounterDate).toUpperCase()}</div>
                     <div style={{ fontSize: "15px", fontWeight: 700, color: "#18181b", marginTop: "4px" }}>{complaintLabel}</div>
