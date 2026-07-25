@@ -148,7 +148,7 @@ export default function VoiceRecorder({
             <span style={{ width: "12px", height: "12px", background: "white", borderRadius: "2px" }} /> Stop Recording
           </button>
           <div style={{ flex: 1, height: "40px", background: "#f1f5f9", borderRadius: "12px", overflow: "hidden", position: "relative" }}>
-            <div style={{ position: "absolute", top: 0, left: 0, height: "100%", background: "#ef4444", width: \`\${audioLevel}%\`, transition: "width 0.1s linear" }} />
+            <div style={{ position: "absolute", top: 0, left: 0, height: "100%", background: "#ef4444", width: `${audioLevel}%`, transition: "width 0.1s linear" }} />
           </div>
         </div>
       )}
