@@ -42,7 +42,6 @@ export default function ComplaintStep({
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [voiceTranscript, setVoiceTranscript] = useState(initialComplaint?.voiceTranscript || "");
   const [audioUrl, setAudioUrl] = useState<string | null>(initialComplaint?.audioUrl || null);
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [expandedRecorder, setExpandedRecorder] = useState(
     Boolean(initialComplaint?.voiceTranscript || initialComplaint?.audioUrl)
   );
@@ -88,28 +87,25 @@ export default function ComplaintStep({
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recognitionRef = useRef<any>(null);
-  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const recorderStatusRef = useRef<RecorderStatus>(recorderStatus);
-  const fallbackSimRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     recorderStatusRef.current = recorderStatus;
   }, [recorderStatus]);
 
-  // Clean up timers & audio on unmount
+  // Clean up timers & speech recognition on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (fallbackSimRef.current) clearInterval(fallbackSimRef.current);
       if (recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch (e) {}
       }
     };
   }, []);
 
-  // START RECORDING & TRANSCRIPTION
+  // START RECORDING & 100% REAL MIC TRANSCRIPTION
   function startRecording() {
     setRecorderStatus("recording");
     setRecordingSeconds(0);
@@ -121,34 +117,50 @@ export default function ComplaintStep({
       setRecordingSeconds((prev) => prev + 1);
     }, 1000);
 
-    // Initialize MediaRecorder for microphone stream
+    // Detect browser supported audio MIME type for universal playback (iOS Safari / Chrome / Android)
+    let selectedMimeType = "audio/webm";
+    if (typeof MediaRecorder !== "undefined") {
+      if (MediaRecorder.isTypeSupported("audio/mp4")) {
+        selectedMimeType = "audio/mp4";
+      } else if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+        selectedMimeType = "audio/webm;codecs=opus";
+      } else if (MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")) {
+        selectedMimeType = "audio/ogg;codecs=opus";
+      }
+    }
+
+    // Initialize MediaRecorder for real microphone audio recording
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       navigator.mediaDevices
         .getUserMedia({ audio: true })
         .then((stream) => {
-          const mediaRecorder = new MediaRecorder(stream);
+          const mediaRecorder = new MediaRecorder(
+            stream,
+            selectedMimeType ? { mimeType: selectedMimeType } : undefined
+          );
           mediaRecorderRef.current = mediaRecorder;
 
           mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0) {
+            if (event.data && event.data.size > 0) {
               audioChunksRef.current.push(event.data);
             }
           };
 
           mediaRecorder.onstop = () => {
-            const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+            const actualMime = mediaRecorder.mimeType || selectedMimeType || "audio/webm";
+            const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
             const url = URL.createObjectURL(audioBlob);
             setAudioUrl(url);
           };
 
-          mediaRecorder.start(250);
+          mediaRecorder.start(200);
         })
         .catch((err) => {
-          console.warn("Microphone access error:", err);
+          console.warn("Microphone permission error or unsupported:", err);
         });
     }
 
-    // Initialize SpeechRecognition for live streaming transcription
+    // Initialize SpeechRecognition for 100% real spoken voice transcription
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -188,27 +200,6 @@ export default function ComplaintStep({
         console.warn("SpeechRecognition init error:", e);
       }
     }
-
-    // Live Streaming Fallback Simulation if SpeechRecognition is quiet/unsupported
-    const samplePhrases = [
-      "Patient reports headache starting this morning.",
-      " Feeling feverish and fatigued with mild body aches.",
-      " Has slight runny nose and eye redness.",
-      " No known drug reactions reported today."
-    ];
-    let phraseIdx = 0;
-    if (fallbackSimRef.current) clearInterval(fallbackSimRef.current);
-    fallbackSimRef.current = setInterval(() => {
-      if (recorderStatusRef.current === "recording") {
-        setVoiceTranscript((prev) => {
-          if (!prev.includes(samplePhrases[phraseIdx % samplePhrases.length])) {
-            return (prev + " " + samplePhrases[phraseIdx % samplePhrases.length]).trim();
-          }
-          return prev;
-        });
-        phraseIdx++;
-      }
-    }, 4000);
   }
 
   // PAUSE RECORDING
@@ -242,16 +233,12 @@ export default function ComplaintStep({
     }
   }
 
-  // STOP RECORDING
+  // STOP RECORDING & GENERATE AUDIO PLAYBACK
   function stopRecording() {
     setRecorderStatus("stopped");
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
-    }
-    if (fallbackSimRef.current) {
-      clearInterval(fallbackSimRef.current);
-      fallbackSimRef.current = null;
     }
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
@@ -273,18 +260,6 @@ export default function ComplaintStep({
     setVoiceTranscript("");
     setRecorderStatus("idle");
     setRecordingSeconds(0);
-  }
-
-  // PLAY / PAUSE AUDIO PLAYBACK
-  function toggleAudioPlayback() {
-    if (!audioPlayerRef.current) return;
-    if (isPlayingAudio) {
-      audioPlayerRef.current.pause();
-      setIsPlayingAudio(false);
-    } else {
-      audioPlayerRef.current.play();
-      setIsPlayingAudio(true);
-    }
   }
 
   // Handle File Selections
@@ -397,19 +372,7 @@ export default function ComplaintStep({
         onChange={handleFileSelect}
       />
 
-      {/* Hidden Audio Player for Playback */}
-      {audioUrl && (
-        <audio
-          ref={audioPlayerRef}
-          src={audioUrl}
-          onEnded={() => setIsPlayingAudio(false)}
-          onPause={() => setIsPlayingAudio(false)}
-          onPlay={() => setIsPlayingAudio(true)}
-          style={{ display: "none" }}
-        />
-      )}
-
-      {/* 1. AMBIENT VOICE RECORDER BAR & STANDARD RECORDER CONTROLS */}
+      {/* 1. AMBIENT VOICE RECORDER BAR & STANDARD CONTROLS */}
       <div
         style={{
           background:
@@ -433,7 +396,7 @@ export default function ComplaintStep({
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
           
-          {/* Status Badge & Dynamic Recorder Buttons */}
+          {/* Dynamic Recorder Buttons */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
             
             {/* IDLE STATE: Start Button */}
@@ -468,7 +431,7 @@ export default function ComplaintStep({
               </button>
             )}
 
-            {/* RECORDING STATE: Pulsing Badge + Pause + Stop Buttons */}
+            {/* RECORDING STATE: Pulsing Badge + Pause + Stop */}
             {recorderStatus === "recording" && (
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(255, 255, 255, 0.2)", padding: "6px 14px", borderRadius: "24px" }}>
@@ -531,7 +494,7 @@ export default function ComplaintStep({
               </>
             )}
 
-            {/* PAUSED STATE: Amber Badge + Resume + Stop Buttons */}
+            {/* PAUSED STATE: Amber Badge + Resume + Stop */}
             {recorderStatus === "paused" && (
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(255, 255, 255, 0.2)", padding: "6px 14px", borderRadius: "24px" }}>
@@ -583,39 +546,18 @@ export default function ComplaintStep({
               </>
             )}
 
-            {/* STOPPED STATE: Saved Badge + Playback + Re-record */}
+            {/* STOPPED STATE: Saved Badge + Re-record */}
             {recorderStatus === "stopped" && (
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#f0fdf4", padding: "6px 12px", borderRadius: "20px", border: "1px solid #bbf7d0" }}>
                   <span style={{ fontSize: "12px", fontWeight: 800, color: "#166534" }}>✓ Voice Saved</span>
                 </div>
 
-                {audioUrl && (
-                  <button
-                    type="button"
-                    onClick={toggleAudioPlayback}
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: "20px",
-                      background: isPlayingAudio ? "#0ea5e9" : "#0f766e",
-                      color: "white",
-                      fontWeight: 800,
-                      fontSize: "12px",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px"
-                    }}
-                  >
-                    <span>{isPlayingAudio ? "⏸️ Pause Audio" : "🔊 Listen Audio"}</span>
-                  </button>
-                )}
-
                 <button
                   type="button"
                   onClick={resetRecording}
                   style={{
-                    padding: "6px 10px",
+                    padding: "6px 12px",
                     borderRadius: "20px",
                     background: "#f4f4f5",
                     color: "#52525b",
@@ -653,6 +595,25 @@ export default function ComplaintStep({
 
         </div>
 
+        {/* Interactive Audio Player Bar for Real Playback */}
+        {audioUrl && (
+          <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "4px" }}>
+            <span style={{ fontSize: "11px", fontWeight: 800, color: recorderStatus === "recording" || recorderStatus === "paused" ? "rgba(255,255,255,0.9)" : "#0f766e", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              🔊 Recorded Voice Playback:
+            </span>
+            <audio
+              src={audioUrl}
+              controls
+              style={{
+                width: "100%",
+                height: "36px",
+                borderRadius: "10px",
+                outline: "none"
+              }}
+            />
+          </div>
+        )}
+
         {/* Live Streaming Transcript Snippet */}
         {voiceTranscript && !expandedRecorder && (
           <div
@@ -666,7 +627,7 @@ export default function ComplaintStep({
               textOverflow: "ellipsis"
             }}
           >
-            <strong>Live:</strong> {voiceTranscript}
+            <strong>Live Transcript:</strong> {voiceTranscript}
           </div>
         )}
 
@@ -684,7 +645,7 @@ export default function ComplaintStep({
           >
             <div>
               <div style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.8, marginBottom: "4px" }}>
-                Transcribed Audio Text:
+                Transcribed Audio Text (Edit if needed):
               </div>
               <textarea
                 style={{
@@ -701,7 +662,7 @@ export default function ComplaintStep({
                 }}
                 value={voiceTranscript}
                 onChange={(e) => setVoiceTranscript(e.target.value)}
-                placeholder="Live transcript will stream here as patient speaks..."
+                placeholder="Live transcript from microphone will stream here..."
               />
             </div>
           </div>
@@ -974,26 +935,7 @@ export default function ComplaintStep({
                   🎙️ Recorded Patient Audio & Transcript
                 </label>
                 {audioUrl && (
-                  <button
-                    type="button"
-                    onClick={toggleAudioPlayback}
-                    style={{
-                      padding: "8px 14px",
-                      borderRadius: "12px",
-                      background: "#0f766e",
-                      color: "white",
-                      fontWeight: 700,
-                      fontSize: "12px",
-                      cursor: "pointer",
-                      border: "none",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      width: "max-content"
-                    }}
-                  >
-                    <span>{isPlayingAudio ? "⏸️ Pause Audio" : "🔊 Listen Audio"}</span>
-                  </button>
+                  <audio controls src={audioUrl} style={{ width: "100%", marginBottom: "6px" }} />
                 )}
                 <textarea
                   style={{
