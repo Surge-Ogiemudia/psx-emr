@@ -18,9 +18,17 @@ interface AttachedFileItem {
 export default function ComplaintStep({
   encounterId,
   patientAllergies,
+  initialComplaint,
 }: {
   encounterId: string;
   patientAllergies: string;
+  initialComplaint?: {
+    voiceTranscript?: string | null;
+    audioUrl?: string | null;
+    textInput?: string | null;
+    images?: string;
+    files?: string;
+  } | null;
 }) {
   const router = useRouter();
   const allergies = parseJson<Allergy[]>(patientAllergies, []);
@@ -28,16 +36,39 @@ export default function ComplaintStep({
   // Ambient Voice Recorder State
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [voiceTranscript, setVoiceTranscript] = useState("");
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [expandedRecorder, setExpandedRecorder] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState(initialComplaint?.voiceTranscript || "");
+  const [audioUrl, setAudioUrl] = useState<string | null>(initialComplaint?.audioUrl || null);
+  const [expandedRecorder, setExpandedRecorder] = useState(Boolean(initialComplaint?.voiceTranscript || initialComplaint?.audioUrl));
 
   // Pharmacist Notes State
-  const [textInput, setTextInput] = useState("");
+  const [textInput, setTextInput] = useState(initialComplaint?.textInput || "");
 
   // Attachment Menu & Files State
   const [showAttachMenu, setShowAttachMenu] = useState(false);
-  const [attachments, setAttachments] = useState<AttachedFileItem[]>([]);
+  const [attachments, setAttachments] = useState<AttachedFileItem[]>(() => {
+    if (!initialComplaint) return [];
+    try {
+      const imgs: string[] = parseJson(initialComplaint.images || "[]", []);
+      const fls: string[] = parseJson(initialComplaint.files || "[]", []);
+      const imgItems: AttachedFileItem[] = imgs.map((name, i) => ({
+        id: `saved-img-${i}`,
+        name,
+        size: 1024 * 500,
+        type: "image",
+        url: name,
+      }));
+      const fileItems: AttachedFileItem[] = fls.map((name, i) => ({
+        id: `saved-file-${i}`,
+        name,
+        size: 1024 * 300,
+        type: "document",
+        url: name,
+      }));
+      return [...imgItems, ...fileItems];
+    } catch {
+      return [];
+    }
+  });
 
   // Review Modal & Saving State
   const [showReviewModal, setShowReviewModal] = useState(false);
