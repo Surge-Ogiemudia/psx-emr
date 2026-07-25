@@ -45,6 +45,7 @@ export default function ComplaintStep({
   const [audioUrl, setAudioUrl] = useState<string | null>(initialComplaint?.audioUrl || null);
   const [audioLevel, setAudioLevel] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
+  const [showTranscript, setShowTranscript] = useState(false);
 
   // Pharmacist Notes State
   const [textInput, setTextInput] = useState(initialComplaint?.textInput || "");
@@ -193,14 +194,13 @@ export default function ComplaintStep({
             stream.getTracks().forEach((t) => t.stop());
             setAudioLevel(0);
 
-            setStatusMessage("Transcribing audio with Gemini...");
+            setStatusMessage("Transcribing...");
             try {
               const text = await transcribeAudio(audioBlob);
               if (text) {
                 setVoiceTranscript((prev) => prev ? prev + "\n" + text : text);
-                setStatusMessage("✓ Voice transcribed successfully. Review in text box.");
-                // Sync to Pharmacist Notes text box to ensure it acts as the primary canvas
-                setTextInput((prev) => prev ? prev + "\n" + text : text);
+                setShowTranscript(true);
+                setStatusMessage("✓ Voice transcribed successfully.");
               } else {
                 setStatusMessage("✓ Voice recording saved. Play back audio below.");
               }
@@ -617,6 +617,57 @@ export default function ComplaintStep({
                 outline: "none"
               }}
             />
+            
+            {/* Transcript Accordion */}
+            {voiceTranscript && (
+              <div style={{ marginTop: "8px", border: "1px solid #e2e8f0", borderRadius: "12px", overflow: "hidden", background: "#f8fafc" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowTranscript(!showTranscript)}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 14px",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    color: "#334155"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span>📝</span>
+                    <span>View Transcript</span>
+                  </div>
+                  <span>{showTranscript ? "▼" : "▶"}</span>
+                </button>
+                
+                {showTranscript && (
+                  <div style={{ padding: "0 14px 14px 14px" }}>
+                    <textarea
+                      style={{
+                        width: "100%",
+                        minHeight: "100px",
+                        padding: "12px",
+                        borderRadius: "8px",
+                        border: "1px solid #cbd5e1",
+                        background: "#ffffff",
+                        fontSize: "14px",
+                        lineHeight: 1.5,
+                        color: "#1e293b",
+                        outline: "none",
+                        resize: "vertical"
+                      }}
+                      value={voiceTranscript}
+                      onChange={(e) => setVoiceTranscript(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
