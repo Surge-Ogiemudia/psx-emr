@@ -59,7 +59,7 @@ export default async function HomePage() {
         subtitle={`${patients.length} active patient records in clinical system`}
       />
       
-      <div className="screen-content" style={{ paddingBottom: "100px" }}>
+      <div className="screen-content" style={{ paddingBottom: "160px" }}>
         {/* Metric Summary Widgets */}
         <div style={{
           display: "grid",
@@ -133,7 +133,7 @@ export default async function HomePage() {
       {/* Floating Action Dock (Always in view, sticky over all content, mobile-safe) */}
       <div style={{ 
         position: "fixed", 
-        bottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)", 
+        bottom: "calc(env(safe-area-inset-bottom, 0px) + 68px)", 
         left: "50%",
         transform: "translateX(-50%)",
         display: "flex", 
