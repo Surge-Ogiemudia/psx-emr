@@ -11,15 +11,24 @@ export default function AssessmentStep({
   encounterId,
   complaintSummary,
   patientAllergies,
+  hpcSegments,
+  historySnapshot,
+  ros,
+  initialImpression,
 }: {
   encounterId: string;
   complaintSummary: string;
   patientAllergies: string;
+  hpcSegments: any[];
+  historySnapshot: any;
+  ros: any;
+  initialImpression: string;
 }) {
   const router = useRouter();
   const allergies = parseJson<Allergy[]>(patientAllergies, []);
-  const [impression, setImpression] = useState("");
+  const [impression, setImpression] = useState(initialImpression);
   const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [suggestionError, setSuggestionError] = useState<string | null>(null);
   const [accepted, setAccepted] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -27,7 +36,17 @@ export default function AssessmentStep({
     suggestAssessment({
       complaintSummary,
       allergies: allergies.map((a) => a.substance),
-    }).then(setSuggestion);
+      hpcSegments,
+      historySnapshot,
+      ros,
+    })
+      .then((res) => {
+        if (res.error) setSuggestionError(res.error);
+        else setSuggestion(res.suggestion);
+      })
+      .catch((err) => {
+        setSuggestionError(err.message || "Failed to generate AI suggestion");
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -72,7 +91,13 @@ export default function AssessmentStep({
         onChange={(e) => setImpression(e.target.value)}
       />
 
-      {suggestion && (
+      {suggestionError && (
+        <div style={{ background: "#fef2f2", borderRadius: "16px", border: "1px solid #fecaca", padding: "16px", marginBottom: "24px", color: "#dc2626", fontSize: "14px", fontWeight: 600 }}>
+          ⚠️ {suggestionError}
+        </div>
+      )}
+
+      {suggestion && !suggestionError && (
         <div style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderRadius: "16px", border: "1px solid #e9d5ff", padding: "20px", marginBottom: "24px", boxShadow: "0 4px 20px -6px rgba(147, 51, 234, 0.15)" }}>
           <div style={{ fontSize: "12px", fontWeight: 800, color: "#9333ea", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
             <span>✦</span> Gemma suggestion

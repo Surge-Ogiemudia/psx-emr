@@ -27,6 +27,10 @@ export default async function AssessmentPage({
           encounterId={id}
           complaintSummary={encounter.complaint?.gemmaSummary ?? encounter.complaint?.textInput ?? ""}
           patientAllergies={encounter.patient.knownAllergies}
+          hpcSegments={encounter.hpcs}
+          historySnapshot={encounter.historySnapshot}
+          ros={encounter.ros}
+          initialImpression={encounter.assessment?.pharmacistImpression || ""}
         />
       </div>
       <FooterDisclaimer />

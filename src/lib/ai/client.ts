@@ -127,14 +127,29 @@ export async function generateRosQuestions(complaintSummary: string): Promise<st
 export async function suggestAssessment(context: {
   complaintSummary: string;
   allergies: string[];
-}): Promise<string> {
-  // TODO: Gemma drafts a pharmaceutical-assessment suggestion, allergy-aware.
-  const allergyNote = context.allergies.length
-    ? ` Avoid ${context.allergies.join(", ")} given allergy on file.`
-    : "";
-  return delay(
-    `Likely viral upper respiratory tract infection based on symptom pattern.${allergyNote} Consider malaria exclusion if fever persists.`,
-  );
+  hpcSegments?: any[];
+  historySnapshot?: any;
+  ros?: any;
+}): Promise<{ suggestion?: string; error?: string }> {
+  try {
+    const res = await fetch("/api/ai/assessment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(context),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.suggestion) return { suggestion: data.suggestion };
+    } else if (res.status === 429) {
+      const errData = await res.json();
+      return { error: errData.error };
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  return { suggestion: "Could not generate AI assessment suggestion." };
 }
 
 export async function generateCounsellingNotes(
