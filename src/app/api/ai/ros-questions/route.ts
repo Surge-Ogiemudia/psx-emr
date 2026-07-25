@@ -39,7 +39,7 @@ Respond ONLY with a valid JSON array of strings, and nothing else. No markdown f
 ["Question 1", "Question 2", "Question 3"]
 `;
 
-    const response = await fetch(\`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=\${apiKey}\`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -58,7 +58,7 @@ Respond ONLY with a valid JSON array of strings, and nothing else. No markdown f
           if (retryInfo?.retryDelay) waitTime = retryInfo.retryDelay;
         } catch (e) {}
         return NextResponse.json(
-          { error: \`You're on free tier and quota has exceeded, please wait \${waitTime} to generate ROS questions or upgrade to pro version by contacting admin.\` },
+          { error: `You're on free tier and quota has exceeded, please wait ${waitTime} to generate ROS questions or upgrade to pro version by contacting admin.` },
           { status: 429 }
         );
       }
@@ -69,7 +69,7 @@ Respond ONLY with a valid JSON array of strings, and nothing else. No markdown f
     const data = await response.json();
     let textResult = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
     
-    textResult = textResult.replace(/\`\`\`json/g, "").replace(/\`\`\`/g, "").trim();
+    textResult = textResult.replace(/```json/g, "").replace(/```/g, "").trim();
 
     let questions = [];
     try {
