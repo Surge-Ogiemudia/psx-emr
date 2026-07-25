@@ -37,7 +37,7 @@ Return ONLY a valid JSON string (not an object, just a string inside JSON quotes
 Example: "Patient's dry cough is a known side effect of Lisinopril."
 `;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
