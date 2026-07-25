@@ -95,18 +95,33 @@ export async function generateHpcQuestions(
   ]);
 }
 
-export async function generateRosQuestions(
-  _complaintSummary: string,
-): Promise<string[]> {
-  // TODO: Gemma generates up to 8 associated-symptom questions from complaint + HPC context.
-  return delay([
+export async function generateRosQuestions(complaintSummary: string): Promise<string[]> {
+  try {
+    const res = await fetch("/api/ai/ros-questions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ complaintSummary }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.questions && data.questions.length > 0) return data.questions;
+    } else if (res.status === 429) {
+      const errData = await res.json();
+      console.warn("429 error:", errData.error);
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  // Universal 5 Fallback (if AI fails, returns empty, or hits 429)
+  return [
     "Fever or chills?",
     "Nausea or vomiting?",
-    "Sensitivity to light?",
-    "Sore throat?",
-    "Body aches?",
-    "Loss of appetite?",
-  ]);
+    "Shortness of breath?",
+    "Severe fatigue or weakness?",
+    "Unexplained pain?",
+  ];
 }
 
 export async function suggestAssessment(context: {

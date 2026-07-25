@@ -8,18 +8,40 @@ import type { RosAnswer } from "@/lib/enums";
 export default function RosStep({
   encounterId,
   complaintSummary,
+  initialRos,
 }: {
   encounterId: string;
   complaintSummary: string;
+  initialRos?: any;
 }) {
   const router = useRouter();
   const [questions, setQuestions] = useState<string[] | null>(null);
   const [answers, setAnswers] = useState<Record<string, RosAnswer>>({});
   const [saving, setSaving] = useState(false);
+  const [customSymptom, setCustomSymptom] = useState("");
 
   useEffect(() => {
-    generateRosQuestions(complaintSummary).then(setQuestions);
-  }, [complaintSummary]);
+    if (initialRos && initialRos.questionsGenerated) {
+      setQuestions(JSON.parse(initialRos.questionsGenerated));
+      const parsedAnswers = JSON.parse(initialRos.answersGiven || "[]");
+      const ansMap: Record<string, RosAnswer> = {};
+      parsedAnswers.forEach((a: any) => {
+        ansMap[a.question] = a.answer;
+      });
+      setAnswers(ansMap);
+    } else {
+      generateRosQuestions(complaintSummary).then(setQuestions);
+    }
+  }, [complaintSummary, initialRos]);
+
+  function handleAddCustom() {
+    if (!customSymptom.trim() || !questions) return;
+    const trimmed = customSymptom.trim();
+    if (!questions.includes(trimmed)) {
+      setQuestions([...questions, trimmed]);
+    }
+    setCustomSymptom("");
+  }
 
   async function continueToAssessment() {
     setSaving(true);
@@ -94,6 +116,31 @@ export default function RosStep({
         ))}
       </div>
 
+      <div style={{ display: "flex", gap: "12px", marginBottom: "32px", alignItems: "center" }}>
+        <input
+          type="text"
+          value={customSymptom}
+          onChange={(e) => setCustomSymptom(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleAddCustom(); }}
+          placeholder="Add symptom to check..."
+          style={{
+            flex: 1, padding: "14px 16px", borderRadius: "12px", border: "1px solid #e4e4e7",
+            fontSize: "14px", outline: "none", color: "#18181b"
+          }}
+        />
+        <button
+          onClick={handleAddCustom}
+          disabled={!customSymptom.trim()}
+          style={{
+            padding: "14px 20px", borderRadius: "12px", border: "none",
+            background: customSymptom.trim() ? "#18181b" : "#e4e4e7",
+            color: customSymptom.trim() ? "white" : "#a1a1aa", fontSize: "14px", fontWeight: 700,
+            cursor: customSymptom.trim() ? "pointer" : "not-allowed", transition: "all 0.2s"
+          }}
+        >
+          + Add
+        </button>
+      </div>
       <button
         style={{
           width: "100%", padding: "16px", borderRadius: "16px", border: "none",

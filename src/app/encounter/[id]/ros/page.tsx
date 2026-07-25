@@ -26,6 +26,7 @@ export default async function RosPage({
         <RosStep
           encounterId={id}
           complaintSummary={encounter.complaint?.gemmaSummary ?? encounter.complaint?.textInput ?? ""}
+          initialRos={encounter.ros || null}
         />
       </div>
       <FooterDisclaimer />
