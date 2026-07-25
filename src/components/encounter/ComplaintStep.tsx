@@ -206,9 +206,12 @@ export default function ComplaintStep({
               } else {
                 setStatusMessage("✓ Voice recording saved. Play back audio below.");
               }
-            } catch (err) {
+            } catch (err: any) {
               console.error(err);
-              setStatusMessage("✓ Voice recording saved. Transcription failed.");
+              const errMsg = err.message || "Transcription failed.";
+              setStatusMessage("⚠️ Voice recording saved, but transcription failed.");
+              setVoiceTranscript((prev) => prev ? prev + "\n[AI Error: " + errMsg + "]" : "[AI Error: " + errMsg + "]");
+              setShowTranscript(true);
             }
           };
 

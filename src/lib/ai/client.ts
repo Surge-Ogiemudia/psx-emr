@@ -45,6 +45,7 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
     }
   } catch (e) {
     console.warn("Audio transcription request failed:", e);
+    throw e;
   }
   return "";
 }

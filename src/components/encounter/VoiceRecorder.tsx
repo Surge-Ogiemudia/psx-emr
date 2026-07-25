@@ -100,9 +100,11 @@ export default function VoiceRecorder({
           setTranscript(text);
           setStatusMsg("Recording saved and transcribed.");
           onRecordingComplete(audioBlobObj, url, text);
-        } catch (e) {
-          setStatusMsg("Transcription failed.");
-          onRecordingComplete(audioBlobObj, url, "");
+        } catch (e: any) {
+          const errMsg = e.message || "Transcription failed.";
+          setTranscript(`[AI Error: ${errMsg}]`);
+          setStatusMsg("⚠️ Recording saved, but transcription failed.");
+          onRecordingComplete(audioBlobObj, url, `[AI Error: ${errMsg}]`);
         }
         setRecordState("stopped");
       };
