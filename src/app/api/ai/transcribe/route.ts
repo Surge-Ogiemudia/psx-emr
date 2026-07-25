@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     const base64Audio = Buffer.from(arrayBuffer).toString("base64");
 
     // 3. Send to Gemini for transcription
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
