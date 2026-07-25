@@ -370,6 +370,31 @@ export default function ComplaintStep({
           })
       );
 
+      setStatusMessage("Segmenting complaint with AI...");
+      let finalSegments = [
+        {
+          label: "Chief Complaint",
+          summary: reviewTextInput || reviewVoiceTranscript || "Primary symptom noted.",
+        }
+      ];
+      try {
+        if (reviewVoiceTranscript || reviewTextInput) {
+          const aiRes = await fetch("/api/ai/segment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ voiceTranscript: reviewVoiceTranscript, textInput: reviewTextInput }),
+          });
+          if (aiRes.ok) {
+            const aiData = await aiRes.json();
+            if (aiData.segments && aiData.segments.length > 0) {
+              finalSegments = aiData.segments;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("AI segmentation failed, falling back to default.", err);
+      }
+
       setStatusMessage("Saving complaint...");
       await fetch(`/api/encounters/${encounterId}/complaint`, {
         method: "PUT",
@@ -381,12 +406,7 @@ export default function ComplaintStep({
           images: uploadedImages,
           files: uploadedFiles,
           gemmaSummary: reviewTextInput || reviewVoiceTranscript || "Complaint recorded",
-          complaintSegments: [
-            {
-              label: "Chief Complaint",
-              summary: reviewTextInput || reviewVoiceTranscript || "Primary symptom noted.",
-            },
-          ],
+          complaintSegments: finalSegments,
         }),
       });
 
