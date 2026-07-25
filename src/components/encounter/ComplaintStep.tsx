@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AllergyBanner from "./AllergyBanner";
 import { parseJson } from "@/lib/types";
 import type { Allergy } from "@/lib/types";
+import { transcribeAudio } from "@/lib/ai/client";
 
 interface AttachedFileItem {
   id: string;
@@ -44,9 +45,8 @@ export default function ComplaintStep({
   const [audioUrl, setAudioUrl] = useState<string | null>(initialComplaint?.audioUrl || null);
   const [audioLevel, setAudioLevel] = useState(0); // Mic volume visualizer level (0-100)
   const [speechStatus, setSpeechStatus] = useState("");
-  const [expandedRecorder, setExpandedRecorder] = useState(
-    Boolean(initialComplaint?.voiceTranscript || initialComplaint?.audioUrl)
-  );
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [expandedRecorder, setExpandedRecorder] = useState(true);
 
   // Pharmacist Notes State
   const [textInput, setTextInput] = useState(initialComplaint?.textInput || "");
@@ -87,6 +87,7 @@ export default function ComplaintStep({
   // Refs for Audio, AudioContext Visualizer, Speech Recognition, & Timers
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const lastAudioBlobRef = useRef<Blob | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recognitionRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -118,6 +119,7 @@ export default function ComplaintStep({
     setRecorderStatus("recording");
     setRecordingSeconds(0);
     setSpeechStatus("Requesting mic access...");
+    setExpandedRecorder(true);
     audioChunksRef.current = [];
 
     // Start Recording Timer
@@ -190,29 +192,33 @@ export default function ComplaintStep({
             }
           };
 
-          // STOP HANDLER: Create playable audio Blob AND THEN stop mic stream tracks
-          mediaRecorder.onstop = () => {
+          // STOP HANDLER: Create playable audio Blob AND trigger AI transcription
+          mediaRecorder.onstop = async () => {
             const actualMime = mediaRecorder.mimeType || selectedMimeType || "audio/webm";
             const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
+            lastAudioBlobRef.current = audioBlob;
             const url = URL.createObjectURL(audioBlob);
             setAudioUrl(url);
 
             // Clean up microphone stream tracks AFTER creating blob URL
             stream.getTracks().forEach((t) => t.stop());
             setAudioLevel(0);
+
+            // Auto-transcribe recorded audio blob
+            await runAudioTranscription(audioBlob);
           };
 
-          mediaRecorder.start(250);
+          mediaRecorder.start(200);
         })
         .catch((err) => {
           console.error("Microphone permission error or unsupported:", err);
-          setSpeechStatus("❌ Mic access denied. Please allow microphone permissions.");
+          setSpeechStatus("❌ Mic access denied. Please check microphone permissions.");
         });
     } else {
       setSpeechStatus("❌ Microphone not supported in this browser.");
     }
 
-    // Initialize Web SpeechRecognition
+    // Initialize Web SpeechRecognition for continuous live streaming
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -240,9 +246,6 @@ export default function ComplaintStep({
 
         recognition.onerror = (event: any) => {
           console.warn("SpeechRecognition error:", event.error);
-          if (event.error === "not-allowed") {
-            setSpeechStatus("⚠️ Speech permission blocked by browser.");
-          }
         };
 
         recognition.onend = () => {
@@ -258,8 +261,36 @@ export default function ComplaintStep({
       } catch (e) {
         console.warn("SpeechRecognition init error:", e);
       }
-    } else {
-      setSpeechStatus("⚠️ Speech API unavailable. Audio is recording properly.");
+    }
+  }
+
+  // RUN AI AUDIO TRANSCRIPTION PIPELINE
+  async function runAudioTranscription(blob?: Blob | null) {
+    const targetBlob = blob || lastAudioBlobRef.current;
+    setIsTranscribing(true);
+    setSpeechStatus("⚡ Transcribing recorded voice...");
+    try {
+      if (targetBlob) {
+        const text = await transcribeAudio(targetBlob);
+        if (text) {
+          setVoiceTranscript((prev) => {
+            if (!prev.trim()) return text;
+            if (prev.includes(text)) return prev;
+            return `${prev}\n${text}`;
+          });
+          setSpeechStatus("✓ Audio transcribed successfully!");
+        } else {
+          setSpeechStatus("✓ Audio saved. Edit transcript text below.");
+        }
+      } else {
+        setSpeechStatus("✓ Audio saved. Edit transcript text below.");
+      }
+    } catch (e) {
+      console.warn("Transcription error:", e);
+      setSpeechStatus("✓ Audio saved. Type or edit transcript below.");
+    } finally {
+      setIsTranscribing(false);
+      setExpandedRecorder(true);
     }
   }
 
@@ -299,7 +330,7 @@ export default function ComplaintStep({
   // STOP RECORDING & GENERATE AUDIO PLAYBACK
   function stopRecording() {
     setRecorderStatus("stopped");
-    setSpeechStatus("✓ Recording completed. Play back audio below.");
+    setSpeechStatus("⏳ Finalizing audio recording...");
 
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -323,6 +354,7 @@ export default function ComplaintStep({
     setRecorderStatus("idle");
     setRecordingSeconds(0);
     setSpeechStatus("");
+    lastAudioBlobRef.current = null;
   }
 
   // Handle File Selections
@@ -616,12 +648,31 @@ export default function ComplaintStep({
               </>
             )}
 
-            {/* STOPPED STATE: Saved Badge + Re-record */}
+            {/* STOPPED STATE: Saved Badge + Transcribe Button + Re-record */}
             {recorderStatus === "stopped" && (
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#f0fdf4", padding: "6px 12px", borderRadius: "20px", border: "1px solid #bbf7d0" }}>
                   <span style={{ fontSize: "12px", fontWeight: 800, color: "#166534" }}>✓ Voice Saved</span>
                 </div>
+
+                <button
+                  type="button"
+                  disabled={isTranscribing}
+                  onClick={() => runAudioTranscription()}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "20px",
+                    background: "linear-gradient(135deg, #0f766e 0%, #0284c7 100%)",
+                    color: "#ffffff",
+                    fontWeight: 800,
+                    fontSize: "12px",
+                    cursor: isTranscribing ? "not-allowed" : "pointer",
+                    border: "none",
+                    boxShadow: "0 2px 8px rgba(15, 118, 110, 0.3)"
+                  }}
+                >
+                  {isTranscribing ? "⏳ Transcribing..." : "📝 Transcribe Audio"}
+                </button>
 
                 <button
                   type="button"
@@ -645,22 +696,20 @@ export default function ComplaintStep({
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            {voiceTranscript && (
-              <button
-                type="button"
-                onClick={() => setExpandedRecorder(!expandedRecorder)}
-                style={{
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  color: recorderStatus === "recording" || recorderStatus === "paused" ? "rgba(255,255,255,0.9)" : "#0f766e",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer"
-                }}
-              >
-                {expandedRecorder ? "▲ Hide Transcript" : "▼ Show Transcript"}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setExpandedRecorder(!expandedRecorder)}
+              style={{
+                fontSize: "12px",
+                fontWeight: 700,
+                color: recorderStatus === "recording" || recorderStatus === "paused" ? "rgba(255,255,255,0.9)" : "#0f766e",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer"
+              }}
+            >
+              {expandedRecorder ? "▲ Hide Transcript" : "▼ Show Transcript"}
+            </button>
           </div>
 
         </div>
@@ -691,24 +740,7 @@ export default function ComplaintStep({
           </div>
         )}
 
-        {/* Live Streaming Transcript Snippet */}
-        {voiceTranscript && !expandedRecorder && (
-          <div
-            style={{
-              marginTop: "10px",
-              fontSize: "13px",
-              lineHeight: 1.5,
-              opacity: 0.95,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis"
-            }}
-          >
-            <strong>Live Transcript:</strong> {voiceTranscript}
-          </div>
-        )}
-
-        {/* Expanded Transcript Drawer */}
+        {/* Always Visible or Expanded Transcript Text Area */}
         {expandedRecorder && (
           <div
             style={{
@@ -721,25 +753,32 @@ export default function ComplaintStep({
             }}
           >
             <div>
-              <div style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.8, marginBottom: "4px" }}>
-                Transcribed Audio Text (Edit if needed):
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                <span style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.8 }}>
+                  Transcribed Audio Text (Edit or dictation notes):
+                </span>
+                {isTranscribing && (
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#0ea5e9" }}>
+                    ⚡ AI Speech-to-Text active...
+                  </span>
+                )}
               </div>
               <textarea
                 style={{
                   width: "100%",
-                  minHeight: "80px",
-                  fontSize: "13px",
+                  minHeight: "90px",
+                  fontSize: "14px",
                   lineHeight: 1.6,
                   background: recorderStatus === "recording" || recorderStatus === "paused" ? "rgba(0,0,0,0.15)" : "#f8fafc",
                   color: recorderStatus === "recording" || recorderStatus === "paused" ? "#ffffff" : "#1e293b",
-                  padding: "10px 12px",
+                  padding: "12px",
                   borderRadius: "12px",
-                  border: recorderStatus === "recording" || recorderStatus === "paused" ? "none" : "1px solid #e2e8f0",
+                  border: recorderStatus === "recording" || recorderStatus === "paused" ? "none" : "1px solid #cbd5e1",
                   outline: "none"
                 }}
                 value={voiceTranscript}
                 onChange={(e) => setVoiceTranscript(e.target.value)}
-                placeholder="Live transcript from microphone will stream here..."
+                placeholder="Transcribed voice text will appear here. You can also type or edit speech notes directly..."
               />
             </div>
           </div>
