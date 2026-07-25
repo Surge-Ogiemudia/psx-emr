@@ -288,6 +288,45 @@ export default function DispensaryList({
                 </div>
               ))}
             </div>
+
+            {/* Dispense Complete Button for Widget */}
+            {!selectedRx.fulfilled && (
+              <div style={{ marginTop: "12px", display: "flex", justifyContent: "flex-end" }}>
+                <button 
+                  onClick={async (e) => { 
+                    e.preventDefault();
+                    e.stopPropagation(); 
+                    await handleDispense(selectedRx.id);
+                    setSelectedRx(null);
+                    setSearch("");
+                  }}
+                  style={{
+                    background: "linear-gradient(135deg, #0f766e 0%, #115e59 100%)", 
+                    color: "white", 
+                    padding: "8px 16px", 
+                    borderRadius: "8px", 
+                    fontSize: "13px", 
+                    fontWeight: 700, 
+                    border: "none", 
+                    cursor: "pointer", 
+                    boxShadow: "0 4px 12px rgba(15, 118, 110, 0.2)", 
+                    display: "flex", 
+                    alignItems: "center", 
+                    justifyContent: "center",
+                    gap: "6px", 
+                    transition: "all 0.2s",
+                    width: "100%"
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
+                  onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                >
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Dispense Complete
+                </button>
+              </div>
+            )}
           </div>
         ) : ((isWidget || search) && (pending.length > 0 || (!isWidget && matchedWalkIns.length > 0) || search.trim().length > 0)) && (
           <div className="embed-suggestions">
