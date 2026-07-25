@@ -154,21 +154,67 @@ export async function suggestAssessment(context: {
 
 export async function generateCounsellingNotes(
   medicines: DispensedMedicine[],
-): Promise<string> {
-  // TODO: Gemma drafts counselling notes from the dispensing record.
-  if (medicines.length === 0) return "";
-  return delay(
-    medicines
-      .map((m) => `${m.name}: take as directed — ${m.dose}. Review for side effects.`)
-      .join(" "),
-  );
+): Promise<{ notes?: string; error?: string }> {
+  if (medicines.length === 0) return { notes: "" };
+
+  try {
+    const res = await fetch("/api/ai/counselling", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ medicines }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.notes) return { notes: data.notes };
+    } else if (res.status === 429) {
+      const errData = await res.json();
+      return { error: errData.error };
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  return { error: "Could not generate AI counselling notes." };
 }
 
 export async function summarizeDiagnosticResult(
-  _fileOrImage: File,
+  testName: string,
+  resultData: any,
 ): Promise<string> {
-  // TODO: Gemma reads an uploaded result (image/PDF) and summarizes findings.
+  // TODO: Gemma interprets lab test result based on reference ranges.
   return delay(
-    "Result uploaded. Summary pending pharmacist review — please confirm findings manually.",
+    `Result for ${testName} shows values outside normal range. Consider adjusting dosage.`,
   );
+}
+
+export async function generateReferralLetter(context: {
+  referredTo: string;
+  reason: string;
+  urgency: string;
+  complaintSummary?: string;
+  hpcSegments?: any[];
+  historySnapshot?: any;
+  ros?: any;
+  pharmacistImpression?: string;
+}): Promise<{ letter?: string; error?: string }> {
+  try {
+    const res = await fetch("/api/ai/referral", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(context),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.letter) return { letter: data.letter };
+    } else if (res.status === 429) {
+      const errData = await res.json();
+      return { error: errData.error };
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  return { error: "Could not generate AI referral letter." };
 }

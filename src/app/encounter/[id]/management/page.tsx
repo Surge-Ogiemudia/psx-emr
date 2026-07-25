@@ -26,6 +26,13 @@ export default async function ManagementPage({
         <ManagementSelector
           encounterId={id}
           allowDiagnostics={encounter.status !== "diagnostic_resumed"}
+          clinicalContext={{
+            complaintSummary: encounter.complaint?.gemmaSummary ?? encounter.complaint?.textInput ?? "",
+            hpcSegments: encounter.hpcs,
+            historySnapshot: encounter.historySnapshot,
+            ros: encounter.ros,
+            pharmacistImpression: encounter.assessment?.pharmacistImpression || "",
+          }}
         />
       </div>
       <FooterDisclaimer />
