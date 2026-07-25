@@ -8,23 +8,42 @@ interface HpcInput {
   freeTextAdditions?: string;
 }
 
+interface HpcPayload {
+  segments: HpcInput[];
+  hpcAudioUrl?: string | null;
+  hpcVoiceTranscript?: string | null;
+}
+
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: encounterId } = await params;
-  const segments: HpcInput[] = await req.json();
+  const payload: HpcPayload = await req.json();
 
-  await prisma.hpc.deleteMany({ where: { encounterId } });
-  await prisma.hpc.createMany({
-    data: segments.map((s) => ({
-      encounterId,
-      complaintSegment: s.complaintSegment,
-      questionsGenerated: JSON.stringify(s.questionsGenerated ?? []),
-      answersGiven: JSON.stringify(s.answersGiven ?? []),
-      freeTextAdditions: s.freeTextAdditions ?? null,
-    })),
+  // Save the global audio/transcript to the Encounter record
+  await prisma.encounter.update({
+    where: { id: encounterId },
+    data: {
+      hpcAudioUrl: payload.hpcAudioUrl,
+      hpcVoiceTranscript: payload.hpcVoiceTranscript,
+    }
   });
+
+  // Handle the HPC segments
+  await prisma.hpc.deleteMany({ where: { encounterId } });
+  
+  if (payload.segments && payload.segments.length > 0) {
+    await prisma.hpc.createMany({
+      data: payload.segments.map((s) => ({
+        encounterId,
+        complaintSegment: s.complaintSegment,
+        questionsGenerated: JSON.stringify(s.questionsGenerated ?? []),
+        answersGiven: JSON.stringify(s.answersGiven ?? []),
+        freeTextAdditions: s.freeTextAdditions ?? null,
+      })),
+    });
+  }
 
   const hpcs = await prisma.hpc.findMany({ where: { encounterId } });
   return NextResponse.json({ hpcs });
