@@ -43,10 +43,10 @@ export default function ComplaintStep({
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [voiceTranscript, setVoiceTranscript] = useState(initialComplaint?.voiceTranscript || "");
   const [audioUrl, setAudioUrl] = useState<string | null>(initialComplaint?.audioUrl || null);
-  const [audioLevel, setAudioLevel] = useState(0); // Mic volume visualizer level (0-100)
+  const [audioLevel, setAudioLevel] = useState(0);
   const [speechStatus, setSpeechStatus] = useState("");
+  const [isDictating, setIsDictating] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const [expandedRecorder, setExpandedRecorder] = useState(true);
 
   // Pharmacist Notes State
   const [textInput, setTextInput] = useState(initialComplaint?.textInput || "");
@@ -89,7 +89,7 @@ export default function ComplaintStep({
   const audioChunksRef = useRef<Blob[]>([]);
   const lastAudioBlobRef = useRef<Blob | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const recognitionRef = useRef<any>(null);
+  const dictationRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -108,18 +108,17 @@ export default function ComplaintStep({
       if (audioContextRef.current) {
         try { audioContextRef.current.close(); } catch (e) {}
       }
-      if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch (e) {}
+      if (dictationRef.current) {
+        try { dictationRef.current.stop(); } catch (e) {}
       }
     };
   }, []);
 
-  // START RECORDING & 100% REAL MIC TRANSCRIPTION
+  // START AUDIO RECORDING
   function startRecording() {
     setRecorderStatus("recording");
     setRecordingSeconds(0);
     setSpeechStatus("Requesting mic access...");
-    setExpandedRecorder(true);
     audioChunksRef.current = [];
 
     // Start Recording Timer
@@ -140,12 +139,12 @@ export default function ComplaintStep({
       }
     }
 
-    // Initialize MediaRecorder & Web Audio API Visualizer for microphone audio
+    // Initialize MediaRecorder for microphone audio recording
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       navigator.mediaDevices
         .getUserMedia({ audio: true })
         .then((stream) => {
-          setSpeechStatus("🎙️ Mic active - speak clearly...");
+          setSpeechStatus("🎙️ Recording patient audio...");
 
           // Web Audio API volume visualizer
           try {
@@ -192,7 +191,7 @@ export default function ComplaintStep({
             }
           };
 
-          // STOP HANDLER: Create playable audio Blob AND trigger AI transcription
+          // STOP HANDLER: Create playable audio Blob AND THEN stop mic stream tracks
           mediaRecorder.onstop = async () => {
             const actualMime = mediaRecorder.mimeType || selectedMimeType || "audio/webm";
             const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
@@ -204,8 +203,7 @@ export default function ComplaintStep({
             stream.getTracks().forEach((t) => t.stop());
             setAudioLevel(0);
 
-            // Auto-transcribe recorded audio blob
-            await runAudioTranscription(audioBlob);
+            setSpeechStatus("✓ Voice recording saved. Play back below or use Dictate Speech.");
           };
 
           mediaRecorder.start(200);
@@ -217,80 +215,63 @@ export default function ComplaintStep({
     } else {
       setSpeechStatus("❌ Microphone not supported in this browser.");
     }
+  }
 
-    // Initialize Web SpeechRecognition for continuous live streaming
+  // TOGGLE LIVE SPEECH DICTATION (INDEPENDENT SPEECH TO TEXT)
+  function toggleSpeechDictation() {
+    if (isDictating) {
+      if (dictationRef.current) {
+        try { dictationRef.current.stop(); } catch (e) {}
+      }
+      setIsDictating(false);
+      setSpeechStatus("✓ Dictation stopped.");
+      return;
+    }
+
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-    if (SpeechRecognition) {
-      try {
-        const recognition = new SpeechRecognition();
-        recognition.lang = navigator.language || "en-US";
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.maxAlternatives = 1;
-
-        recognition.onstart = () => {
-          setSpeechStatus("🎙️ Transcribing live speech...");
-        };
-
-        recognition.onresult = (event: any) => {
-          let currentTranscript = "";
-          for (let i = 0; i < event.results.length; i++) {
-            currentTranscript += event.results[i][0].transcript + " ";
-          }
-          if (currentTranscript.trim()) {
-            setVoiceTranscript(currentTranscript.trim());
-          }
-        };
-
-        recognition.onerror = (event: any) => {
-          console.warn("SpeechRecognition error:", event.error);
-        };
-
-        recognition.onend = () => {
-          if (recorderStatusRef.current === "recording") {
-            try {
-              recognition.start();
-            } catch (e) {}
-          }
-        };
-
-        recognition.start();
-        recognitionRef.current = recognition;
-      } catch (e) {
-        console.warn("SpeechRecognition init error:", e);
-      }
+    if (!SpeechRecognition) {
+      alert("Browser Speech Recognition is not supported on this browser. You can type directly into the notes box!");
+      return;
     }
-  }
 
-  // RUN AI AUDIO TRANSCRIPTION PIPELINE
-  async function runAudioTranscription(blob?: Blob | null) {
-    const targetBlob = blob || lastAudioBlobRef.current;
-    setIsTranscribing(true);
-    setSpeechStatus("⚡ Transcribing recorded voice...");
     try {
-      if (targetBlob) {
-        const text = await transcribeAudio(targetBlob);
-        if (text) {
-          setVoiceTranscript((prev) => {
-            if (!prev.trim()) return text;
-            if (prev.includes(text)) return prev;
-            return `${prev}\n${text}`;
-          });
-          setSpeechStatus("✓ Audio transcribed successfully!");
-        } else {
-          setSpeechStatus("✓ Audio saved. Edit transcript text below.");
+      const recognition = new SpeechRecognition();
+      recognition.lang = navigator.language || "en-US";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        setIsDictating(true);
+        setSpeechStatus("🔴 Live Dictation Active - speak clearly into your mic...");
+      };
+
+      recognition.onresult = (event: any) => {
+        let currentTranscript = "";
+        for (let i = 0; i < event.results.length; i++) {
+          currentTranscript += event.results[i][0].transcript + " ";
         }
-      } else {
-        setSpeechStatus("✓ Audio saved. Edit transcript text below.");
-      }
+        if (currentTranscript.trim()) {
+          setVoiceTranscript(currentTranscript.trim());
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn("Dictation error:", event.error);
+        setIsDictating(false);
+        setSpeechStatus(`⚠️ Dictation status: ${event.error}. You can type directly into the box.`);
+      };
+
+      recognition.onend = () => {
+        setIsDictating(false);
+      };
+
+      recognition.start();
+      dictationRef.current = recognition;
     } catch (e) {
-      console.warn("Transcription error:", e);
-      setSpeechStatus("✓ Audio saved. Type or edit transcript below.");
-    } finally {
-      setIsTranscribing(false);
-      setExpandedRecorder(true);
+      console.warn("Dictation init error:", e);
+      alert("Could not initialize Speech Dictation. Please type directly into the box.");
     }
   }
 
@@ -304,9 +285,6 @@ export default function ComplaintStep({
     }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.pause();
-    }
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch (e) {}
     }
   }
 
@@ -322,12 +300,9 @@ export default function ComplaintStep({
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "paused") {
       mediaRecorderRef.current.resume();
     }
-    if (recognitionRef.current) {
-      try { recognitionRef.current.start(); } catch (e) {}
-    }
   }
 
-  // STOP RECORDING & GENERATE AUDIO PLAYBACK
+  // STOP RECORDING
   function stopRecording() {
     setRecorderStatus("stopped");
     setSpeechStatus("⏳ Finalizing audio recording...");
@@ -339,10 +314,6 @@ export default function ComplaintStep({
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
-    }
-
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch (e) {}
     }
   }
 
@@ -648,31 +619,12 @@ export default function ComplaintStep({
               </>
             )}
 
-            {/* STOPPED STATE: Saved Badge + Transcribe Button + Re-record */}
+            {/* STOPPED STATE: Saved Badge + Re-record */}
             {recorderStatus === "stopped" && (
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#f0fdf4", padding: "6px 12px", borderRadius: "20px", border: "1px solid #bbf7d0" }}>
                   <span style={{ fontSize: "12px", fontWeight: 800, color: "#166534" }}>✓ Voice Saved</span>
                 </div>
-
-                <button
-                  type="button"
-                  disabled={isTranscribing}
-                  onClick={() => runAudioTranscription()}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: "20px",
-                    background: "linear-gradient(135deg, #0f766e 0%, #0284c7 100%)",
-                    color: "#ffffff",
-                    fontWeight: 800,
-                    fontSize: "12px",
-                    cursor: isTranscribing ? "not-allowed" : "pointer",
-                    border: "none",
-                    boxShadow: "0 2px 8px rgba(15, 118, 110, 0.3)"
-                  }}
-                >
-                  {isTranscribing ? "⏳ Transcribing..." : "📝 Transcribe Audio"}
-                </button>
 
                 <button
                   type="button"
@@ -698,17 +650,22 @@ export default function ComplaintStep({
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <button
               type="button"
-              onClick={() => setExpandedRecorder(!expandedRecorder)}
+              onClick={toggleSpeechDictation}
               style={{
+                padding: "6px 12px",
+                borderRadius: "20px",
+                background: isDictating ? "#ef4444" : "#0f766e",
+                color: "#ffffff",
+                fontWeight: 800,
                 fontSize: "12px",
-                fontWeight: 700,
-                color: recorderStatus === "recording" || recorderStatus === "paused" ? "rgba(255,255,255,0.9)" : "#0f766e",
-                background: "transparent",
+                cursor: "pointer",
                 border: "none",
-                cursor: "pointer"
+                display: "flex",
+                alignItems: "center",
+                gap: "6px"
               }}
             >
-              {expandedRecorder ? "▲ Hide Transcript" : "▼ Show Transcript"}
+              <span>{isDictating ? "🔴 Stop Dictation" : "🎙️ Dictate Speech"}</span>
             </button>
           </div>
 
@@ -740,49 +697,47 @@ export default function ComplaintStep({
           </div>
         )}
 
-        {/* Always Visible or Expanded Transcript Text Area */}
-        {expandedRecorder && (
-          <div
-            style={{
-              marginTop: "14px",
-              paddingTop: "14px",
-              borderTop: recorderStatus === "recording" || recorderStatus === "paused" ? "1px solid rgba(255,255,255,0.2)" : "1px solid #e4e4e7",
-              display: "flex",
-              flexDirection: "column",
-              gap: "10px"
-            }}
-          >
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                <span style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.8 }}>
-                  Transcribed Audio Text (Edit or dictation notes):
+        {/* Always Visible Transcript & Dictation Box */}
+        <div
+          style={{
+            marginTop: "14px",
+            paddingTop: "14px",
+            borderTop: recorderStatus === "recording" || recorderStatus === "paused" ? "1px solid rgba(255,255,255,0.2)" : "1px solid #e4e4e7",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px"
+          }}
+        >
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.8 }}>
+                Transcribed Audio Text (Edit or dictation notes):
+              </span>
+              {isDictating && (
+                <span style={{ fontSize: "11px", fontWeight: 700, color: "#ef4444" }}>
+                  🔴 Dictation Active - Listening...
                 </span>
-                {isTranscribing && (
-                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#0ea5e9" }}>
-                    ⚡ AI Speech-to-Text active...
-                  </span>
-                )}
-              </div>
-              <textarea
-                style={{
-                  width: "100%",
-                  minHeight: "90px",
-                  fontSize: "14px",
-                  lineHeight: 1.6,
-                  background: recorderStatus === "recording" || recorderStatus === "paused" ? "rgba(0,0,0,0.15)" : "#f8fafc",
-                  color: recorderStatus === "recording" || recorderStatus === "paused" ? "#ffffff" : "#1e293b",
-                  padding: "12px",
-                  borderRadius: "12px",
-                  border: recorderStatus === "recording" || recorderStatus === "paused" ? "none" : "1px solid #cbd5e1",
-                  outline: "none"
-                }}
-                value={voiceTranscript}
-                onChange={(e) => setVoiceTranscript(e.target.value)}
-                placeholder="Transcribed voice text will appear here. You can also type or edit speech notes directly..."
-              />
+              )}
             </div>
+            <textarea
+              style={{
+                width: "100%",
+                minHeight: "90px",
+                fontSize: "14px",
+                lineHeight: 1.6,
+                background: recorderStatus === "recording" || recorderStatus === "paused" ? "rgba(0,0,0,0.15)" : "#f8fafc",
+                color: recorderStatus === "recording" || recorderStatus === "paused" ? "#ffffff" : "#1e293b",
+                padding: "12px",
+                borderRadius: "12px",
+                border: recorderStatus === "recording" || recorderStatus === "paused" ? "none" : "1px solid #cbd5e1",
+                outline: "none"
+              }}
+              value={voiceTranscript}
+              onChange={(e) => setVoiceTranscript(e.target.value)}
+              placeholder="Click '🎙️ Dictate Speech' to speak directly into this box, or type transcript notes..."
+            />
           </div>
-        )}
+        </div>
       </div>
 
       {/* 2. PRIMARY PHARMACIST TYPING CANVAS */}

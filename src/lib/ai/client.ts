@@ -26,11 +26,24 @@ function delay<T>(value: T, ms = MOCK_DELAY_MS): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), ms));
 }
 
-export async function transcribeAudio(_audioBlob: Blob): Promise<string> {
-  // TODO: run Xenova/whisper-tiny.en (or base) via @xenova/transformers, on device.
-  return delay(
-    "I have a headache since morning, my body is hot and I also have a runny nose and my eyes are red.",
-  );
+export async function transcribeAudio(audioBlob: Blob): Promise<string> {
+  try {
+    const formData = new FormData();
+    formData.append("audio", audioBlob, "recording.webm");
+
+    const res = await fetch("/api/ai/transcribe", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return data.text || "";
+    }
+  } catch (e) {
+    console.warn("Audio transcription request failed:", e);
+  }
+  return "";
 }
 
 export interface ComplaintSummaryResult {
