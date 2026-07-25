@@ -165,6 +165,7 @@ export async function generateCounsellingNotes(
     });
 
     if (res.ok) {
+
       const data = await res.json();
       if (data.notes) return { notes: data.notes };
     } else if (res.status === 429) {
@@ -179,12 +180,11 @@ export async function generateCounsellingNotes(
 }
 
 export async function summarizeDiagnosticResult(
-  testName: string,
-  resultData: any,
+  _fileOrImage: File,
 ): Promise<string> {
-  // TODO: Gemma interprets lab test result based on reference ranges.
+  // TODO: Gemma reads an uploaded result (image/PDF) and summarizes findings.
   return delay(
-    `Result for ${testName} shows values outside normal range. Consider adjusting dosage.`,
+    "Result uploaded. Summary pending pharmacist review — please confirm findings manually.",
   );
 }
 
