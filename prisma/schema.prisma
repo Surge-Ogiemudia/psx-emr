@@ -20,6 +20,7 @@ model Pharmacy {
   subdomain   String   @unique @map("slug")
   logoUrl     String?
   brandColor  String   @default("#0F6E56")
+  aiApiKey    String?
   createdAt   DateTime @default(now())
 
   branches Branch[]

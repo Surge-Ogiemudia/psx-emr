@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AllergyBanner from "./AllergyBanner";
 import { parseJson } from "@/lib/types";
 import type { Allergy } from "@/lib/types";
+import { transcribeAudio } from "@/lib/ai/client";
 
 interface AttachedFileItem {
   id: string;
@@ -182,7 +183,7 @@ export default function ComplaintStep({
           };
 
           // STOP HANDLER: Create audio blob URL & cleanup mic tracks
-          mediaRecorder.onstop = () => {
+          mediaRecorder.onstop = async () => {
             const actualMime = mediaRecorder.mimeType || selectedMimeType || "audio/webm";
             const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
             const url = URL.createObjectURL(audioBlob);
@@ -192,7 +193,21 @@ export default function ComplaintStep({
             stream.getTracks().forEach((t) => t.stop());
             setAudioLevel(0);
 
-            setStatusMessage("✓ Voice recording saved. Play back audio below.");
+            setStatusMessage("Transcribing audio with Gemini...");
+            try {
+              const text = await transcribeAudio(audioBlob);
+              if (text) {
+                setVoiceTranscript((prev) => prev ? prev + "\n" + text : text);
+                setStatusMessage("✓ Voice transcribed successfully. Review in text box.");
+                // Sync to Pharmacist Notes text box to ensure it acts as the primary canvas
+                setTextInput((prev) => prev ? prev + "\n" + text : text);
+              } else {
+                setStatusMessage("✓ Voice recording saved. Play back audio below.");
+              }
+            } catch (err) {
+              console.error(err);
+              setStatusMessage("✓ Voice recording saved. Transcription failed.");
+            }
           };
 
           mediaRecorder.start(200);
