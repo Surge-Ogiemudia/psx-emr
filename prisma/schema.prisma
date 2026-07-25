@@ -139,6 +139,8 @@ model Encounter {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  addendums String @default("[]") // JSON array of { text, addedAt, staffName }
+
   @@index([pharmacyId, patientId])
   @@map("encounters")
 }

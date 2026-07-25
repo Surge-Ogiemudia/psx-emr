@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDateTime } from "@/lib/format";
@@ -42,7 +41,6 @@ const STATUS_LABEL: Record<string, { label: string; bg: string; color: string }>
 };
 
 export default function EncounterTimeline({ encounters }: { encounters: EncounterData[] }) {
-  const [openId, setOpenId] = useState<string | null>(null);
   const router = useRouter();
 
   function getResumeLink(e: EncounterData) {
@@ -72,7 +70,6 @@ export default function EncounterTimeline({ encounters }: { encounters: Encounte
           const statusInfo = e.exitType ? STATUS_LABEL[e.exitType] : { label: "In progress", bg: "#fef3c7", color: "#b45309" };
           const segments = parseJson<ComplaintSegment[]>(e.complaint?.complaintSegments, []);
           const complaintLabel = e.complaint?.gemmaSummary ?? e.complaint?.textInput ?? segments.map((s) => s.label).join(", ") ?? "Encounter";
-          const open = openId === e.id;
 
           return (
             <div key={e.id} style={{ position: "relative", paddingLeft: "24px" }}>
@@ -86,9 +83,9 @@ export default function EncounterTimeline({ encounters }: { encounters: Encounte
                   if (e.status === "active") {
                     router.push(getResumeLink(e));
                   } else {
-                    setOpenId(open ? null : e.id);
+                    router.push(`/encounter/${e.id}/review`);
                   }
-                }} style={{ padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer", background: open ? "#fafafa" : "#ffffff" }}>
+                }} style={{ padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", cursor: "pointer", background: "#ffffff" }}>
                   <div>
                     <div style={{ fontSize: "11px", fontWeight: 800, color: "#a1a1aa", letterSpacing: "0.05em" }}>{formatDateTime(e.encounterDate).toUpperCase()}</div>
                     <div style={{ fontSize: "15px", fontWeight: 700, color: "#18181b", marginTop: "4px" }}>{complaintLabel}</div>
@@ -101,104 +98,6 @@ export default function EncounterTimeline({ encounters }: { encounters: Encounte
                   <Link href={`/encounter/${e.id}/resume`} style={{ display: "block", background: "linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%)", color: "white", textAlign: "center", padding: "12px", fontSize: "13px", fontWeight: 700, textDecoration: "none" }}>
                     Continue from diagnostics →
                   </Link>
-                )}
-
-                {open && (
-                  <div style={{ borderTop: "1px solid #e4e4e7", background: "#ffffff", padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {e.hpcs.map((h, i) => {
-                      const answers = parseJson<HpcAnswer[]>(h.answersGiven, []);
-                      return (
-                        <div key={i} style={{ paddingBottom: "12px", borderBottom: "1px solid #f4f4f5" }}>
-                          <div style={{ fontSize: "11px", fontWeight: 800, color: "#0f766e", textTransform: "uppercase", marginBottom: "4px" }}>HPC — {h.complaintSegment}</div>
-                          <div style={{ fontSize: "13px", color: "#52525b", lineHeight: 1.5 }}>{answers.map((a) => `${a.question} ${a.answer}`).join("; ") || "—"}</div>
-                        </div>
-                      );
-                    })}
-
-                    {e.historySnapshot && (
-                      <div style={{ paddingBottom: "12px", borderBottom: "1px solid #f4f4f5" }}>
-                        <div style={{ fontSize: "11px", fontWeight: 800, color: "#0f766e", textTransform: "uppercase", marginBottom: "4px" }}>Vitals</div>
-                        <div style={{ fontSize: "13px", color: "#52525b" }}>
-                          {[
-                            e.historySnapshot.bloodPressure && `BP ${e.historySnapshot.bloodPressure}`,
-                            e.historySnapshot.temperature && `Temp ${e.historySnapshot.temperature}°C`,
-                            e.historySnapshot.bloodSugar && `Sugar ${e.historySnapshot.bloodSugar}`,
-                            e.historySnapshot.pulse && `Pulse ${e.historySnapshot.pulse}bpm`,
-                            e.historySnapshot.weight && `Weight ${e.historySnapshot.weight}kg`,
-                          ].filter(Boolean).join(" · ") || "None recorded"}
-                        </div>
-                      </div>
-                    )}
-
-                    {e.ros && (
-                      <div style={{ paddingBottom: "12px", borderBottom: "1px solid #f4f4f5" }}>
-                        <div style={{ fontSize: "11px", fontWeight: 800, color: "#0f766e", textTransform: "uppercase", marginBottom: "4px" }}>Review of systems</div>
-                        <div style={{ fontSize: "13px", color: "#52525b", lineHeight: 1.5 }}>
-                          {parseJson<RosAnswerEntry[]>(e.ros.answersGiven, []).map((a) => `${a.question}: ${a.answer}`).join("; ") || "—"}
-                        </div>
-                      </div>
-                    )}
-
-                    {e.assessment && (
-                      <div style={{ paddingBottom: "12px", borderBottom: "1px solid #f4f4f5" }}>
-                        <div style={{ fontSize: "11px", fontWeight: 800, color: "#0f766e", textTransform: "uppercase", marginBottom: "4px" }}>Pharmaceutical assessment</div>
-                        <div style={{ fontSize: "13px", color: "#52525b", lineHeight: 1.5 }}>{e.assessment.pharmacistImpression}</div>
-                      </div>
-                    )}
-
-                    {e.managementPlan && (
-                      <>
-                        {e.managementPlan.exitType === "diagnostic" && (
-                          <div style={{ paddingBottom: "12px", borderBottom: "1px solid #f4f4f5" }}>
-                            <div style={{ fontSize: "11px", fontWeight: 800, color: "#0ea5e9", textTransform: "uppercase", marginBottom: "4px" }}>Diagnostics requested</div>
-                            <div style={{ fontSize: "13px", color: "#52525b" }}>{parseJson<string[]>(e.managementPlan.diagnosticsRecommended, []).join(", ") || "—"}</div>
-                          </div>
-                        )}
-
-                        {e.managementPlan.exitType === "referred" && e.managementPlan.referralDetails && (
-                          <div style={{ paddingBottom: "12px", borderBottom: "1px solid #f4f4f5" }}>
-                            <div style={{ fontSize: "11px", fontWeight: 800, color: "#4338ca", textTransform: "uppercase", marginBottom: "4px" }}>Referral</div>
-                            <div style={{ fontSize: "13px", color: "#52525b" }}>
-                              {(() => {
-                                const r = parseJson<ReferralDetails | null>(e.managementPlan.referralDetails, null);
-                                return r ? `${r.referredTo} — ${r.reason} (${r.urgency})` : "—";
-                              })()}
-                            </div>
-                          </div>
-                        )}
-
-                        {e.managementPlan.medicinesDispensed && (
-                          <div style={{ paddingBottom: "12px", borderBottom: "1px solid #f4f4f5" }}>
-                            <div style={{ fontSize: "11px", fontWeight: 800, color: "#8b5cf6", textTransform: "uppercase", marginBottom: "4px" }}>Medicines dispensed</div>
-                            <div style={{ fontSize: "13px", color: "#52525b", lineHeight: 1.5 }}>
-                              {parseJson<DispensedMedicine[]>(e.managementPlan.medicinesDispensed, []).map((m) => `${m.name} (${m.dose})${m.interim ? " — interim" : ""}`).join(", ") || "—"}
-                            </div>
-                          </div>
-                        )}
-
-                        {e.managementPlan.nonPharmacologicalAdvice && (
-                          <div style={{ paddingBottom: "12px", borderBottom: "1px solid #f4f4f5" }}>
-                            <div style={{ fontSize: "11px", fontWeight: 800, color: "#a1a1aa", textTransform: "uppercase", marginBottom: "4px" }}>Advice</div>
-                            <div style={{ fontSize: "13px", color: "#52525b", lineHeight: 1.5 }}>{e.managementPlan.nonPharmacologicalAdvice}</div>
-                          </div>
-                        )}
-
-                        {e.managementPlan.followUpInstructions && (
-                          <div style={{ paddingBottom: "12px", borderBottom: "1px solid #f4f4f5" }}>
-                            <div style={{ fontSize: "11px", fontWeight: 800, color: "#a1a1aa", textTransform: "uppercase", marginBottom: "4px" }}>Follow up</div>
-                            <div style={{ fontSize: "13px", color: "#52525b", lineHeight: 1.5 }}>{e.managementPlan.followUpInstructions}</div>
-                          </div>
-                        )}
-
-                        {e.managementPlan.counsellingNotes && (
-                          <div>
-                            <div style={{ fontSize: "11px", fontWeight: 800, color: "#a1a1aa", textTransform: "uppercase", marginBottom: "4px" }}>Counselling notes</div>
-                            <div style={{ fontSize: "13px", color: "#52525b", lineHeight: 1.5 }}>{e.managementPlan.counsellingNotes}</div>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
                 )}
               </div>
             </div>
