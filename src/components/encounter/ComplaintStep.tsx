@@ -43,6 +43,7 @@ export default function ComplaintStep({
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [voiceTranscript, setVoiceTranscript] = useState(initialComplaint?.voiceTranscript || "");
   const [audioUrl, setAudioUrl] = useState<string | null>(initialComplaint?.audioUrl || null);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
   const [showTranscript, setShowTranscript] = useState(false);
@@ -186,9 +187,10 @@ export default function ComplaintStep({
           // STOP HANDLER: Create audio blob URL & cleanup mic tracks
           mediaRecorder.onstop = async () => {
             const actualMime = mediaRecorder.mimeType || selectedMimeType || "audio/webm";
-            const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
-            const url = URL.createObjectURL(audioBlob);
+            const audioBlobObj = new Blob(audioChunksRef.current, { type: actualMime });
+            const url = URL.createObjectURL(audioBlobObj);
             setAudioUrl(url);
+            setAudioBlob(audioBlobObj);
 
             // Stop mic stream tracks after blob creation
             stream.getTracks().forEach((t) => t.stop());
@@ -196,7 +198,7 @@ export default function ComplaintStep({
 
             setStatusMessage("Transcribing...");
             try {
-              const text = await transcribeAudio(audioBlob);
+              const text = await transcribeAudio(audioBlobObj);
               if (text) {
                 setVoiceTranscript((prev) => prev ? prev + "\n" + text : text);
                 setShowTranscript(true);
@@ -266,6 +268,7 @@ export default function ComplaintStep({
   function resetRecording() {
     stopRecording();
     setAudioUrl(null);
+    setAudioBlob(null);
     setVoiceTranscript("");
     setRecorderStatus("idle");
     setRecordingSeconds(0);
@@ -321,22 +324,62 @@ export default function ComplaintStep({
   async function handleFinalSubmit() {
     setSaving(true);
     try {
-      const imageUrls = attachments
-        .filter((a) => a.type === "image")
-        .map((a) => a.name);
-      const fileUrls = attachments
-        .filter((a) => a.type !== "image")
-        .map((a) => a.name);
+      // 1. Upload new Audio Blob if it exists
+      let finalAudioUrl = audioUrl;
+      if (audioBlob) {
+        setStatusMessage("Uploading audio...");
+        const res = await fetch('/api/upload?filename=complaint-audio.webm', {
+          method: 'POST',
+          body: audioBlob,
+        });
+        const data = await res.json();
+        if (data.url) finalAudioUrl = data.url;
+      }
 
+      // 2. Upload new Attachments if they have fileObj
+      setStatusMessage("Uploading attachments...");
+      const uploadedImages = await Promise.all(
+        attachments
+          .filter((a) => a.type === "image")
+          .map(async (a) => {
+            if (a.fileObj) {
+              const res = await fetch(`/api/upload?filename=${encodeURIComponent(a.name)}`, {
+                method: 'POST',
+                body: a.fileObj,
+              });
+              const data = await res.json();
+              return data.url || a.url; // fallback to object url on error
+            }
+            return a.url;
+          })
+      );
+
+      const uploadedFiles = await Promise.all(
+        attachments
+          .filter((a) => a.type !== "image")
+          .map(async (a) => {
+            if (a.fileObj) {
+              const res = await fetch(`/api/upload?filename=${encodeURIComponent(a.name)}`, {
+                method: 'POST',
+                body: a.fileObj,
+              });
+              const data = await res.json();
+              return data.url || a.url;
+            }
+            return a.url;
+          })
+      );
+
+      setStatusMessage("Saving complaint...");
       await fetch(`/api/encounters/${encounterId}/complaint`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           voiceTranscript: reviewVoiceTranscript,
-          audioUrl: audioUrl || null,
+          audioUrl: finalAudioUrl || null,
           textInput: reviewTextInput,
-          images: imageUrls,
-          files: fileUrls,
+          images: uploadedImages,
+          files: uploadedFiles,
           gemmaSummary: reviewTextInput || reviewVoiceTranscript || "Complaint recorded",
           complaintSegments: [
             {
@@ -350,6 +393,7 @@ export default function ComplaintStep({
       router.push(`/encounter/${encounterId}/hpc`);
     } catch (err) {
       console.error("Failed to save complaint:", err);
+      setStatusMessage("❌ Failed to save complaint.");
     } finally {
       setSaving(false);
     }

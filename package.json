@@ -16,6 +16,7 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "@types/jsonwebtoken": "^9.0.10",
+    "@vercel/blob": "^2.6.1",
     "@vladmandic/face-api": "^1.7.15",
     "bcryptjs": "^3.0.3",
     "jsonwebtoken": "^9.0.3",
