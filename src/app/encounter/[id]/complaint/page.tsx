@@ -25,7 +25,11 @@ export default async function ComplaintPage({
       />
       <StepProgress step={2} />
       <div className="screen-content">
-        <ComplaintStep encounterId={encounter.id} patientAllergies={encounter.patient.knownAllergies} />
+        <ComplaintStep 
+          encounterId={encounter.id} 
+          patientAllergies={encounter.patient.knownAllergies} 
+          initialComplaint={encounter.complaint ? JSON.parse(JSON.stringify(encounter.complaint)) : null}
+        />
       </div>
       <FooterDisclaimer />
     </AppShell>
