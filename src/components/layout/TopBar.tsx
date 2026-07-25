@@ -25,18 +25,21 @@ export default async function TopBar({
 
   return (
     <div style={{ 
-      background: "linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #0284c7 100%)", 
-      padding: "22px 24px 26px", 
+      background: "linear-gradient(135deg, rgba(15, 118, 110, 0.96) 0%, rgba(13, 148, 136, 0.96) 50%, rgba(2, 132, 199, 0.96) 100%)", 
+      backdropFilter: "blur(16px)",
+      WebkitBackdropFilter: "blur(16px)",
+      padding: "18px 24px 22px", 
       color: "white", 
       display: "flex", 
       justifyContent: "space-between", 
       alignItems: "center",
-      boxShadow: "0 10px 30px -5px rgba(15, 118, 110, 0.35)",
-      borderBottomLeftRadius: "28px",
-      borderBottomRightRadius: "28px",
+      boxShadow: "0 8px 30px -4px rgba(15, 118, 110, 0.3)",
+      borderBottomLeftRadius: "24px",
+      borderBottomRightRadius: "24px",
       marginBottom: "16px",
-      zIndex: 10,
-      position: "relative"
+      zIndex: 100,
+      position: "sticky",
+      top: 0
     }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         {backHref && (
