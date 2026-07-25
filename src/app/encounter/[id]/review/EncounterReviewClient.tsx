@@ -275,7 +275,7 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
                         </div>
                         <div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b" }}>Urgency</div>
-                          <div style={{ fontSize: 15, fontWeight: 600, color: r.urgency === "Emergency" ? "#dc2626" : "#18181b" }}>{r.urgency}</div>
+                          <div style={{ fontSize: 15, fontWeight: 600, color: r.urgency === "emergency" ? "#dc2626" : "#18181b" }}>{r.urgency}</div>
                         </div>
                       </div>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>Reason</div>
