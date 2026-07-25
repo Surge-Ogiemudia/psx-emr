@@ -26,8 +26,16 @@ async function fetchHpcQuestions(label: string): Promise<HpcQuestion[]> {
       const errData = await res.json();
       alert(errData.error);
     }
-  } catch (e) {}
-  return [];
+  } catch (e) {
+    console.error(e);
+  }
+  
+  // Guided SOCRATES Fallback (if AI fails, returns empty, or hits 429)
+  return [
+    { question: "Onset (When did it start?)", options: [] },
+    { question: "Character & Severity (What does it feel like / How bad is it?)", options: [] },
+    { question: "Exacerbating / Relieving Factors (What makes it better/worse?)", options: [] },
+  ];
 }
 
 export default function HpcStep({
