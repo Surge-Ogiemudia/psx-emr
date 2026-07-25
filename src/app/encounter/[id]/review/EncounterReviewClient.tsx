@@ -54,7 +54,7 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "#18181b" }}>{formatDateTime(encounter.encounterDate)}</div>
-            <div style={{ fontSize: 13, color: "#71717a" }}>Attending: {staff.fullName}</div>
+            <div style={{ fontSize: 13, color: "#71717a" }}>Attending: {staff?.fullName || "Nil"}</div>
             <div style={{ fontSize: 13, color: "#71717a" }}>Status: {encounter.exitType?.toUpperCase() || "PENDING"}</div>
           </div>
         </div>
@@ -62,128 +62,156 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
         <div style={{ display: "flex", gap: 32 }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 800, color: "#a1a1aa", textTransform: "uppercase" }}>Patient</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#18181b" }}>{patient.fullName}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#18181b" }}>{patient?.fullName || "Nil"}</div>
           </div>
           <div>
             <div style={{ fontSize: 11, fontWeight: 800, color: "#a1a1aa", textTransform: "uppercase" }}>Contact</div>
-            <div style={{ fontSize: 15, color: "#18181b" }}>{patient.phoneNumber}</div>
+            <div style={{ fontSize: 15, color: "#18181b" }}>{patient?.phoneNumber || "Nil"}</div>
           </div>
-          {patient.gender && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#a1a1aa", textTransform: "uppercase" }}>Gender</div>
-              <div style={{ fontSize: 15, color: "#18181b", textTransform: "capitalize" }}>{patient.gender}</div>
-            </div>
-          )}
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#a1a1aa", textTransform: "uppercase" }}>Gender</div>
+            <div style={{ fontSize: 15, color: "#18181b", textTransform: "capitalize" }}>{patient?.gender || "Nil"}</div>
+          </div>
         </div>
       </div>
 
       {/* 1. Complaint */}
-      {complaint && (
-        <div style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-            1. Chief Complaint
-          </h2>
-          <div style={{ background: "#ffffff", borderRadius: 16, padding: 20, border: "1px solid #e4e4e7" }}>
-            {complaint.audioUrl && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 8 }}>Audio Recording</div>
-                <audio controls src={complaint.audioUrl} style={{ width: "100%", height: 40 }} />
-              </div>
-            )}
-            {complaint.textInput && (
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+          1. Chief Complaint
+        </h2>
+        <div style={{ background: "#ffffff", borderRadius: 16, padding: 20, border: "1px solid #e4e4e7" }}>
+          {!complaint ? (
+            <div style={{ fontSize: 15, color: "#71717a" }}>Nil</div>
+          ) : (
+            <>
+              {complaint.audioUrl ? (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 8 }}>Audio Recording</div>
+                  <audio controls src={complaint.audioUrl} style={{ width: "100%", height: 40 }} />
+                </div>
+              ) : (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>Audio Recording</div>
+                  <div style={{ fontSize: 15, color: "#71717a" }}>Nil</div>
+                </div>
+              )}
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>Typed Notes</div>
-                <div style={{ fontSize: 15, color: "#18181b", lineHeight: 1.6 }}>{complaint.textInput}</div>
+                <div style={{ fontSize: 15, color: complaint.textInput ? "#18181b" : "#71717a", lineHeight: 1.6 }}>{complaint.textInput || "Nil"}</div>
               </div>
-            )}
-            {complaint.gemmaSummary && (
               <div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>AI Summary</div>
-                <div style={{ fontSize: 15, color: "#18181b", lineHeight: 1.6, background: "#f8fafc", padding: 12, borderRadius: 8, borderLeft: "4px solid #3b82f6" }}>
-                  {complaint.gemmaSummary}
-                </div>
+                {complaint.gemmaSummary ? (
+                  <div style={{ fontSize: 15, color: "#18181b", lineHeight: 1.6, background: "#f8fafc", padding: 12, borderRadius: 8, borderLeft: "4px solid #3b82f6" }}>
+                    {complaint.gemmaSummary}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 15, color: "#71717a" }}>Nil</div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
-      )}
+      </div>
 
       {/* 2. HPC */}
-      {hpcs && hpcs.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-            2. History of Presenting Complaint
-          </h2>
-          <div style={{ background: "#ffffff", borderRadius: 16, border: "1px solid #e4e4e7", overflow: "hidden" }}>
-            {hpcs.map((hpc: any, index: number) => {
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+          2. History of Presenting Complaint
+        </h2>
+        <div style={{ background: "#ffffff", borderRadius: 16, border: "1px solid #e4e4e7", overflow: "hidden" }}>
+          {!hpcs || hpcs.length === 0 ? (
+            <div style={{ padding: 20, fontSize: 15, color: "#71717a" }}>Nil</div>
+          ) : (
+            hpcs.map((hpc: any, index: number) => {
               const answers = parseJson<HpcAnswer[]>(hpc.answersGiven, []);
               return (
                 <div key={hpc.id} style={{ padding: 20, borderBottom: index < hpcs.length - 1 ? "1px solid #e4e4e7" : "none" }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 800, color: "#18181b", margin: "0 0 12px 0" }}>{hpc.complaintSegment}</h3>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    {answers.map((a, i) => (
-                      <div key={i}>
-                        <div style={{ fontSize: 13, color: "#71717a", fontWeight: 600 }}>Q: {a.question}</div>
-                        <div style={{ fontSize: 15, color: "#18181b", marginTop: 2 }}>A: {a.answer}</div>
-                      </div>
-                    ))}
-                  </div>
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: "#18181b", margin: "0 0 12px 0" }}>{hpc.complaintSegment || "Nil"}</h3>
+                  {answers.length === 0 ? (
+                    <div style={{ fontSize: 14, color: "#71717a" }}>Nil</div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {answers.map((a, i) => (
+                        <div key={i}>
+                          <div style={{ fontSize: 13, color: "#71717a", fontWeight: 600 }}>Q: {a.question}</div>
+                          <div style={{ fontSize: 15, color: "#18181b", marginTop: 2 }}>A: {a.answer || "Nil"}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {hpc.freeTextAdditions && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ fontSize: 13, color: "#71717a", fontWeight: 600 }}>Additional Notes</div>
+                      <div style={{ fontSize: 15, color: "#18181b", marginTop: 2 }}>{hpc.freeTextAdditions}</div>
+                    </div>
+                  )}
                 </div>
               );
-            })}
-          </div>
+            })
+          )}
         </div>
-      )}
+      </div>
 
       {/* 3. History & Vitals */}
-      {historySnapshot && (
-        <div style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-            3. Vitals & Medical History
-          </h2>
-          <div style={{ background: "#ffffff", borderRadius: 16, padding: 20, border: "1px solid #e4e4e7" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-              {historySnapshot.bloodPressure && (
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+          3. Vitals & Medical History
+        </h2>
+        <div style={{ background: "#ffffff", borderRadius: 16, padding: 20, border: "1px solid #e4e4e7" }}>
+          {!historySnapshot ? (
+            <div style={{ fontSize: 15, color: "#71717a" }}>Nil</div>
+          ) : (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
                 <div style={{ background: "#f4f4f5", padding: 12, borderRadius: 8 }}>
                   <div style={{ fontSize: 11, fontWeight: 800, color: "#71717a", textTransform: "uppercase" }}>Blood Pressure</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#18181b" }}>{historySnapshot.bloodPressure}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: historySnapshot.bloodPressure ? "#18181b" : "#a1a1aa" }}>{historySnapshot.bloodPressure || "Nil"}</div>
                 </div>
-              )}
-              {historySnapshot.temperature && (
                 <div style={{ background: "#f4f4f5", padding: 12, borderRadius: 8 }}>
                   <div style={{ fontSize: 11, fontWeight: 800, color: "#71717a", textTransform: "uppercase" }}>Temperature</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#18181b" }}>{historySnapshot.temperature} °C</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: historySnapshot.temperature ? "#18181b" : "#a1a1aa" }}>{historySnapshot.temperature ? `${historySnapshot.temperature} °C` : "Nil"}</div>
                 </div>
-              )}
-              {historySnapshot.weight && (
                 <div style={{ background: "#f4f4f5", padding: 12, borderRadius: 8 }}>
                   <div style={{ fontSize: 11, fontWeight: 800, color: "#71717a", textTransform: "uppercase" }}>Weight</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#18181b" }}>{historySnapshot.weight} kg</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: historySnapshot.weight ? "#18181b" : "#a1a1aa" }}>{historySnapshot.weight ? `${historySnapshot.weight} kg` : "Nil"}</div>
                 </div>
-              )}
-              {historySnapshot.pulse && (
                 <div style={{ background: "#f4f4f5", padding: 12, borderRadius: 8 }}>
                   <div style={{ fontSize: 11, fontWeight: 800, color: "#71717a", textTransform: "uppercase" }}>Pulse</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#18181b" }}>{historySnapshot.pulse} bpm</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: historySnapshot.pulse ? "#18181b" : "#a1a1aa" }}>{historySnapshot.pulse ? `${historySnapshot.pulse} bpm` : "Nil"}</div>
                 </div>
-              )}
-            </div>
-            <div style={{ fontSize: 14, color: "#52525b", lineHeight: 1.6 }}>
-              <strong>Allergies:</strong> {parseJson<any[]>(historySnapshot.allergies, []).map(a => a.substance).join(", ") || "None recorded"}<br/>
-              <strong>Conditions:</strong> {parseJson<string[]>(historySnapshot.conditions, []).join(", ") || "None recorded"}<br/>
-              <strong>Medications:</strong> {parseJson<any[]>(historySnapshot.medications, []).map(m => `${m.name} (${m.dose})`).join(", ") || "None recorded"}
-            </div>
-          </div>
+                <div style={{ background: "#f4f4f5", padding: 12, borderRadius: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "#71717a", textTransform: "uppercase" }}>Blood Sugar</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: historySnapshot.bloodSugar ? "#18181b" : "#a1a1aa" }}>{historySnapshot.bloodSugar ? `${historySnapshot.bloodSugar} mg/dL` : "Nil"}</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 14, color: "#52525b", lineHeight: 1.8 }}>
+                <strong>Age at visit:</strong> <span style={{ color: historySnapshot.ageAtVisit ? "#18181b" : "#a1a1aa" }}>{historySnapshot.ageAtVisit ?? "Nil"}</span><br/>
+                <strong>Pregnancy Status:</strong> <span style={{ color: historySnapshot.isPregnant !== null ? "#18181b" : "#a1a1aa" }}>{historySnapshot.isPregnant === true ? "Pregnant" : historySnapshot.isPregnant === false ? "Not Pregnant" : "Nil"}</span><br/>
+                <strong>Breastfeeding:</strong> <span style={{ color: historySnapshot.isBreastfeeding !== null ? "#18181b" : "#a1a1aa" }}>{historySnapshot.isBreastfeeding === true ? "Yes" : historySnapshot.isBreastfeeding === false ? "No" : "Nil"}</span><br/>
+                <strong>Allergies:</strong> <span style={{ color: parseJson<any[]>(historySnapshot.allergies, []).length > 0 ? "#18181b" : "#a1a1aa" }}>{parseJson<any[]>(historySnapshot.allergies, []).map(a => a.substance).join(", ") || "Nil"}</span><br/>
+                <strong>Conditions:</strong> <span style={{ color: parseJson<string[]>(historySnapshot.conditions, []).length > 0 ? "#18181b" : "#a1a1aa" }}>{parseJson<string[]>(historySnapshot.conditions, []).join(", ") || "Nil"}</span><br/>
+                <strong>Medications:</strong> <span style={{ color: parseJson<any[]>(historySnapshot.medications, []).length > 0 ? "#18181b" : "#a1a1aa" }}>{parseJson<any[]>(historySnapshot.medications, []).map(m => `${m.name} (${m.dose})`).join(", ") || "Nil"}</span><br/>
+                <strong>Social History:</strong> <span style={{ color: historySnapshot.socialHistory ? "#18181b" : "#a1a1aa" }}>{historySnapshot.socialHistory || "Nil"}</span><br/>
+                <strong>Family History:</strong> <span style={{ color: historySnapshot.familyHistory ? "#18181b" : "#a1a1aa" }}>{historySnapshot.familyHistory || "Nil"}</span><br/>
+                <strong>Surgical History:</strong> <span style={{ color: historySnapshot.surgicalHistory ? "#18181b" : "#a1a1aa" }}>{historySnapshot.surgicalHistory || "Nil"}</span><br/>
+                <strong>Additional Notes:</strong> <span style={{ color: historySnapshot.additionalNotes ? "#18181b" : "#a1a1aa" }}>{historySnapshot.additionalNotes || "Nil"}</span>
+              </div>
+            </>
+          )}
         </div>
-      )}
+      </div>
 
       {/* 4. ROS */}
-      {ros && (
-        <div style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-            4. Review of Systems
-          </h2>
-          <div style={{ background: "#ffffff", borderRadius: 16, padding: 20, border: "1px solid #e4e4e7" }}>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+          4. Review of Systems
+        </h2>
+        <div style={{ background: "#ffffff", borderRadius: 16, padding: 20, border: "1px solid #e4e4e7" }}>
+          {!ros || parseJson<RosAnswerEntry[]>(ros.answersGiven, []).length === 0 ? (
+            <div style={{ fontSize: 15, color: "#71717a" }}>Nil</div>
+          ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {parseJson<RosAnswerEntry[]>(ros.answersGiven, []).map((a, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingBottom: 12, borderBottom: "1px solid #f4f4f5" }}>
@@ -193,130 +221,152 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
                     background: a.answer === "yes" ? "#fee2e2" : a.answer === "no" ? "#dcfce7" : "#f1f5f9",
                     color: a.answer === "yes" ? "#b91c1c" : a.answer === "no" ? "#15803d" : "#475569"
                   }}>
-                    {a.answer}
+                    {a.answer || "Nil"}
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* 5. Assessment */}
-      {assessment && (
-        <div style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-            5. Assessment
-          </h2>
-          <div style={{ background: "#ffffff", borderRadius: 16, padding: 20, border: "1px solid #e4e4e7" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>Pharmacist Impression</div>
-            <div style={{ fontSize: 15, color: "#18181b", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-              {assessment.pharmacistImpression}
-            </div>
-          </div>
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+          5. Assessment
+        </h2>
+        <div style={{ background: "#ffffff", borderRadius: 16, padding: 20, border: "1px solid #e4e4e7" }}>
+          {!assessment ? (
+            <div style={{ fontSize: 15, color: "#71717a" }}>Nil</div>
+          ) : (
+            <>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>Pharmacist Impression</div>
+              <div style={{ fontSize: 15, color: assessment.pharmacistImpression ? "#18181b" : "#a1a1aa", lineHeight: 1.6, whiteSpace: "pre-wrap", marginBottom: 16 }}>
+                {assessment.pharmacistImpression || "Nil"}
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>AI Suggestion</div>
+              <div style={{ fontSize: 15, color: assessment.gemmaSuggestion ? "#18181b" : "#a1a1aa", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                {assessment.gemmaSuggestion || "Nil"}
+              </div>
+            </>
+          )}
         </div>
-      )}
+      </div>
 
       {/* 6. Management Plan */}
-      {managementPlan && (
-        <div style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-            6. Management Plan
-          </h2>
-          <div style={{ background: "#ffffff", borderRadius: 16, border: "1px solid #e4e4e7", overflow: "hidden" }}>
-            
-            {managementPlan.exitType === "treated" && (
-              <div style={{ padding: 20 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: "#8b5cf6", textTransform: "uppercase", marginBottom: 12 }}>Treatment Provided</div>
-                
-                {managementPlan.medicinesDispensed && (
+      <div style={{ marginBottom: 24 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+          6. Management Plan
+        </h2>
+        <div style={{ background: "#ffffff", borderRadius: 16, border: "1px solid #e4e4e7", overflow: "hidden" }}>
+          {!managementPlan ? (
+            <div style={{ padding: 20, fontSize: 15, color: "#71717a" }}>Nil</div>
+          ) : (
+            <>
+              {managementPlan.exitType === "treated" && (
+                <div style={{ padding: 20 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "#8b5cf6", textTransform: "uppercase", marginBottom: 12 }}>Treatment Provided</div>
+                  
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>Medicines Dispensed</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      {parseJson<DispensedMedicine[]>(managementPlan.medicinesDispensed, []).map((m, i) => (
-                        <div key={i} style={{ background: "#f5f3ff", color: "#6d28d9", padding: "8px 12px", borderRadius: 8, fontSize: 14, fontWeight: 600 }}>
-                          {m.name} ({m.dose}) x {m.qty}
+                    {(() => {
+                      const meds = parseJson<DispensedMedicine[]>(managementPlan.medicinesDispensed, []);
+                      if (meds.length === 0) return <div style={{ fontSize: 15, color: "#71717a" }}>Nil</div>;
+                      return (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {meds.map((m, i) => (
+                            <div key={i} style={{ background: "#f5f3ff", color: "#6d28d9", padding: "8px 12px", borderRadius: 8, fontSize: 14, fontWeight: 600 }}>
+                              {m.name} ({m.dose}) x {m.qty}
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })()}
                   </div>
-                )}
 
-                {managementPlan.counsellingNotes && (
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>Counselling Notes</div>
-                    <div style={{ background: "#f8fafc", padding: 12, borderRadius: 8, fontSize: 14, color: "#334155", borderLeft: "4px solid #94a3b8", whiteSpace: "pre-wrap" }}>
-                      {managementPlan.counsellingNotes}
-                    </div>
+                    {managementPlan.counsellingNotes ? (
+                      <div style={{ background: "#f8fafc", padding: 12, borderRadius: 8, fontSize: 14, color: "#334155", borderLeft: "4px solid #94a3b8", whiteSpace: "pre-wrap" }}>
+                        {managementPlan.counsellingNotes}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 15, color: "#71717a" }}>Nil</div>
+                    )}
                   </div>
-                )}
 
-                {managementPlan.nonPharmacologicalAdvice && (
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>Advice</div>
-                    <div style={{ fontSize: 15, color: "#18181b" }}>{managementPlan.nonPharmacologicalAdvice}</div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {managementPlan.exitType === "referred" && (
-              <div style={{ padding: 20 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: "#4338ca", textTransform: "uppercase", marginBottom: 12 }}>Referral</div>
-                {(() => {
-                  const r = parseJson<ReferralDetails | null>(managementPlan.referralDetails, null);
-                  if (!r) return null;
-                  return (
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>
-                        <div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b" }}>Referred To</div>
-                          <div style={{ fontSize: 15, fontWeight: 600, color: "#18181b" }}>{r.referredTo}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b" }}>Urgency</div>
-                          <div style={{ fontSize: 15, fontWeight: 600, color: r.urgency === "emergency" ? "#dc2626" : "#18181b" }}>{r.urgency}</div>
-                        </div>
-                      </div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>Reason</div>
-                      <div style={{ fontSize: 15, color: "#18181b" }}>{r.reason}</div>
+                    <div style={{ fontSize: 15, color: managementPlan.nonPharmacologicalAdvice ? "#18181b" : "#71717a" }}>
+                      {managementPlan.nonPharmacologicalAdvice || "Nil"}
                     </div>
-                  );
-                })()}
+                  </div>
+                </div>
+              )}
 
-                {managementPlan.counsellingNotes && (
+              {managementPlan.exitType === "referred" && (
+                <div style={{ padding: 20 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "#4338ca", textTransform: "uppercase", marginBottom: 12 }}>Referral</div>
+                  {(() => {
+                    const r = parseJson<ReferralDetails | null>(managementPlan.referralDetails, null);
+                    return (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b" }}>Referred To</div>
+                            <div style={{ fontSize: 15, fontWeight: 600, color: r?.referredTo ? "#18181b" : "#71717a" }}>{r?.referredTo || "Nil"}</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b" }}>Urgency</div>
+                            <div style={{ fontSize: 15, fontWeight: 600, color: r?.urgency === "emergency" ? "#dc2626" : r?.urgency ? "#18181b" : "#71717a" }}>{r?.urgency || "Nil"}</div>
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>Reason</div>
+                        <div style={{ fontSize: 15, color: r?.reason ? "#18181b" : "#71717a" }}>{r?.reason || "Nil"}</div>
+                      </div>
+                    );
+                  })()}
+
                   <div style={{ marginTop: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>Generated Referral Letter</div>
-                    <div style={{ background: "#eef2ff", padding: 16, borderRadius: 8, fontSize: 14, color: "#312e81", border: "1px solid #c7d2fe", whiteSpace: "pre-wrap", fontFamily: "serif", lineHeight: 1.6 }}>
-                      {managementPlan.counsellingNotes}
-                    </div>
+                    {managementPlan.counsellingNotes ? (
+                      <div style={{ background: "#eef2ff", padding: 16, borderRadius: 8, fontSize: 14, color: "#312e81", border: "1px solid #c7d2fe", whiteSpace: "pre-wrap", fontFamily: "serif", lineHeight: 1.6 }}>
+                        {managementPlan.counsellingNotes}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 15, color: "#71717a" }}>Nil</div>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
-
-            {managementPlan.exitType === "diagnostic" && (
-              <div style={{ padding: 20 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: "#0ea5e9", textTransform: "uppercase", marginBottom: 12 }}>Diagnostics Requested</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {parseJson<string[]>(managementPlan.diagnosticsRecommended, []).map((d, i) => (
-                    <div key={i} style={{ background: "#f0f9ff", color: "#0369a1", padding: "8px 12px", borderRadius: 8, fontSize: 14, fontWeight: 600 }}>
-                      {d}
-                    </div>
-                  ))}
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+
+              {managementPlan.exitType === "diagnostic" && (
+                <div style={{ padding: 20 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "#0ea5e9", textTransform: "uppercase", marginBottom: 12 }}>Diagnostics Requested</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {(() => {
+                      const diags = parseJson<string[]>(managementPlan.diagnosticsRecommended, []);
+                      if (diags.length === 0) return <div style={{ fontSize: 15, color: "#71717a" }}>Nil</div>;
+                      return diags.map((d, i) => (
+                        <div key={i} style={{ background: "#f0f9ff", color: "#0369a1", padding: "8px 12px", borderRadius: 8, fontSize: 14, fontWeight: 600 }}>
+                          {d}
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
-      )}
+      </div>
 
       {/* 7. Addendums */}
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
           Addendums
         </h2>
-        {addendums.length > 0 && (
+        {addendums.length > 0 ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
             {addendums.map((add, idx) => (
               <div key={idx} style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 12, padding: 16 }}>
@@ -328,6 +378,8 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
               </div>
             ))}
           </div>
+        ) : (
+          <div style={{ fontSize: 15, color: "#71717a", marginBottom: 16 }}>Nil</div>
         )}
         
         <div style={{ background: "#ffffff", borderRadius: 16, padding: 16, border: "1px solid #e4e4e7" }}>
