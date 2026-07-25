@@ -22,6 +22,9 @@ async function fetchHpcQuestions(label: string): Promise<HpcQuestion[]> {
     if (res.ok) {
       const data = await res.json();
       if (data.questions && data.questions.length > 0) return data.questions;
+    } else if (res.status === 429) {
+      const errData = await res.json();
+      alert(errData.error);
     }
   } catch (e) {}
   return [];

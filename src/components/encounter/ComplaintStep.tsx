@@ -389,6 +389,9 @@ export default function ComplaintStep({
             if (aiData.segments && aiData.segments.length > 0) {
               finalSegments = aiData.segments;
             }
+          } else if (aiRes.status === 429) {
+            const errData = await aiRes.json();
+            alert(errData.error);
           }
         }
       } catch (err) {

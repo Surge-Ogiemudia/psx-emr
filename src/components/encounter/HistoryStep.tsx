@@ -84,6 +84,9 @@ export default function HistoryStep({
       if (res.ok) {
         const data = await res.json();
         setAiRiskAnalysis(data.analysis);
+      } else if (res.status === 429) {
+        const errData = await res.json();
+        setAiRiskAnalysis(`⚠️ ${errData.error}`);
       }
     } catch (e) {
       console.error(e);
