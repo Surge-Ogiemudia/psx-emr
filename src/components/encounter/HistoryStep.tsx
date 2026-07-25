@@ -254,7 +254,7 @@ export default function HistoryStep({
             <input type="text" id="new-allergy" placeholder="Add allergy substance..." style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid #e4e4e7", fontSize: "13px", outline: "none" }} onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 const val = e.currentTarget.value.trim();
-                if (val) { setAllergyList([...allergyList, { substance: val, severity: "unknown" }]); e.currentTarget.value = ""; }
+                if (val) { setAllergyList([...allergyList, { substance: val, severity: "mild" }]); e.currentTarget.value = ""; }
               }
             }} />
           </div>
