@@ -42,7 +42,7 @@ export default function AssessmentStep({
     })
       .then((res) => {
         if (res.error) setSuggestionError(res.error);
-        else setSuggestion(res.suggestion);
+        else setSuggestion(res.suggestion || null);
       })
       .catch((err) => {
         setSuggestionError(err.message || "Failed to generate AI suggestion");
