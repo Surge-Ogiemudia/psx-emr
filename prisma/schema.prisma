@@ -122,6 +122,9 @@ model Encounter {
   status        String   @default("active")
   exitType      String?
 
+  hpcAudioUrl        String?
+  hpcVoiceTranscript String?
+
   patient Patient @relation(fields: [patientId], references: [id])
   branch  Branch? @relation(fields: [branchId], references: [id])
   staff   Staff   @relation(fields: [staffId], references: [id])

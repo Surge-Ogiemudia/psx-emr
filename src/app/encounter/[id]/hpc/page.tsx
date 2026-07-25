@@ -29,7 +29,13 @@ export default async function HpcPage({
       />
       <StepProgress step={3} />
       <div className="screen-content">
-        <HpcStep encounterId={id} segments={segments} />
+        <HpcStep 
+          encounterId={id} 
+          segments={segments}
+          existingHpcs={encounter.hpcs}
+          existingAudioUrl={encounter.hpcAudioUrl}
+          existingTranscript={encounter.hpcVoiceTranscript}
+        />
       </div>
       <FooterDisclaimer />
     </AppShell>

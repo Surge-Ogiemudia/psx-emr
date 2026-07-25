@@ -1,8 +1,7 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ComplaintSegment, HpcQuestion } from "@/lib/types";
+import VoiceRecorder from "./VoiceRecorder";
 
 interface SegmentState {
   segment: ComplaintSegment;
@@ -29,17 +28,45 @@ async function fetchHpcQuestions(label: string): Promise<HpcQuestion[]> {
 export default function HpcStep({
   encounterId,
   segments,
+  existingHpcs,
+  existingAudioUrl,
+  existingTranscript,
 }: {
   encounterId: string;
   segments: ComplaintSegment[];
+  existingHpcs?: any[];
+  existingAudioUrl?: string | null;
+  existingTranscript?: string | null;
 }) {
   const router = useRouter();
   const [state, setState] = useState<SegmentState[] | null>(null);
   const [saving, setSaving] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  // Audio state
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(existingAudioUrl || null);
+  const [voiceTranscript, setVoiceTranscript] = useState<string>(existingTranscript || "");
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // 1. If we have existing HPCs from the DB, load them to persist state
+      if (existingHpcs && existingHpcs.length > 0) {
+        const loaded = existingHpcs.map((hpc: any) => ({
+          segment: { label: hpc.complaintSegment, summary: "Loaded from previous session" },
+          questions: JSON.parse(hpc.questionsGenerated || "[]"),
+          answers: JSON.parse(hpc.answersGiven || "[]").reduce((acc: any, curr: any) => {
+            acc[curr.question] = curr.answer;
+            return acc;
+          }, {}),
+          freeText: hpc.freeTextAdditions || "",
+        }));
+        if (!cancelled) setState(loaded);
+        return;
+      }
+
+      // 2. Otherwise, fetch new AI questions
       const results = await Promise.all(
         segments.map(async (segment) => ({
           segment,
@@ -53,7 +80,7 @@ export default function HpcStep({
     return () => {
       cancelled = true;
     };
-  }, [segments]);
+  }, [segments, existingHpcs]);
 
   function selectAnswer(segIdx: number, question: string, answer: string) {
     setState((prev) => {
@@ -110,37 +137,77 @@ export default function HpcStep({
   async function continueToHistory() {
     if (!state) return;
     setSaving(true);
-    await fetch(`/api/encounters/${encounterId}/hpc`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        state.map((s) => ({
-          complaintSegment: s.segment.label,
-          questionsGenerated: s.questions,
-          answersGiven: Object.entries(s.answers).map(([question, answer]) => ({
-            question,
-            answer,
+    
+    try {
+      let finalAudioUrl = audioUrl;
+      
+      // Upload new audio if present
+      if (audioBlob) {
+        setStatusMessage("Uploading HPC audio...");
+        const res = await fetch('/api/upload?filename=hpc-audio.webm', {
+          method: "POST",
+          body: audioBlob,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          finalAudioUrl = data.url;
+        }
+      }
+
+      setStatusMessage("Saving HPC data...");
+      await fetch(`/api/encounters/${encounterId}/hpc`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          segments: state.map((s) => ({
+            complaintSegment: s.segment.label,
+            questionsGenerated: s.questions,
+            answersGiven: Object.entries(s.answers).map(([question, answer]) => ({
+              question,
+              answer,
+            })),
+            freeTextAdditions: s.freeText || undefined,
           })),
-          freeTextAdditions: s.freeText || undefined,
-        })),
-      ),
-    });
-    router.push(`/encounter/${encounterId}/history`);
+          hpcAudioUrl: finalAudioUrl || null,
+          hpcVoiceTranscript: voiceTranscript || null,
+        }),
+      });
+      router.push(`/encounter/${encounterId}/history`);
+    } catch (e) {
+      console.error(e);
+      setSaving(false);
+      setStatusMessage(null);
+    }
   }
 
   if (!state) {
     return (
       <div className="ai-processing">
         <div className="ai-dot" />
-        <span className="ai-text">Gemini is analyzing the complaints and generating targeted questions…</span>
+        <span className="ai-text">AI is analyzing the complaints and generating targeted questions…</span>
       </div>
     );
   }
 
-  const answeredCount = state.reduce((sum, s) => sum + Object.keys(s.answers).length, 0);
-
   return (
     <>
+      <div style={{ marginBottom: "24px" }}>
+        <VoiceRecorder
+          onRecordingComplete={(blob, url, transcript) => {
+            setAudioBlob(blob);
+            setAudioUrl(url);
+            setVoiceTranscript(transcript);
+          }}
+          onClear={() => {
+            setAudioBlob(null);
+            setAudioUrl(null);
+            setVoiceTranscript("");
+          }}
+          initialAudioUrl={existingAudioUrl}
+          initialTranscript={existingTranscript}
+        />
+      </div>
+
       {state.map((s, segIdx) => (
         <div key={s.segment.label + segIdx} style={{ background: "#ffffff", borderRadius: "16px", border: "1px solid #e4e4e7", padding: "20px", marginBottom: "20px", boxShadow: "0 4px 20px -6px rgba(0,0,0,0.05)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
@@ -223,6 +290,12 @@ export default function HpcStep({
       >
         <span>➕</span> Add New Complaint Section
       </button>
+
+      {statusMessage && (
+        <div style={{ textAlign: "center", color: "#0ea5e9", fontSize: "14px", fontWeight: 600, marginBottom: "16px" }}>
+          {statusMessage}
+        </div>
+      )}
 
       <button style={{
         width: "100%", padding: "16px", borderRadius: "16px", border: "none",
