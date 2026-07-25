@@ -9,12 +9,15 @@ import Link from "next/link";
 export default function PatientListClient({
   initialPatients,
   autoFocusSearch = false,
+  stats,
 }: {
   initialPatients: PatientRowData[];
   autoFocusSearch?: boolean;
+  stats?: { total: number; pending: number; allergies: number };
 }) {
   const [query, setQuery] = useState("");
   const [patients, setPatients] = useState(initialPatients);
+  const [activeFilter, setActiveFilter] = useState<"all" | "encounters" | "pending" | "allergies">("all");
   const [showFaceScanner, setShowFaceScanner] = useState(false);
   const [faceMatches, setFaceMatches] = useState<any[]>([]);
   const [searchingFace, setSearchingFace] = useState(false);
@@ -59,52 +62,155 @@ export default function PatientListClient({
     }
   }
 
+  const displayedPatients = patients.filter((p) => {
+    if (activeFilter === "encounters") {
+      return p.encounters && p.encounters.length > 0;
+    }
+    if (activeFilter === "pending") {
+      return p.encounters && p.encounters[0]?.status === "diagnostic_pending";
+    }
+    if (activeFilter === "allergies") {
+      try {
+        const list = JSON.parse(p.knownAllergies || "[]");
+        return list.length > 0;
+      } catch {
+        return false;
+      }
+    }
+    return true;
+  });
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      {/* Search Input Bar with Face Scanner Trigger */}
       <div style={{ position: "relative" }}>
         <div style={{
           position: "absolute", inset: 0,
-          background: "linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%)",
-          borderRadius: "16px", filter: "blur(12px)", zIndex: 0
+          background: "linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(13, 148, 136, 0.15) 100%)",
+          borderRadius: "18px", filter: "blur(12px)", zIndex: 0
         }}></div>
-        <div style={{ position: "relative", zIndex: 1, borderRadius: "14px", background: "linear-gradient(#fff, #fff) padding-box, linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%) border-box", border: "2px solid transparent", boxShadow: "0 8px 24px -4px rgba(14, 165, 233, 0.15)", display: "flex", alignItems: "center", padding: "4px 6px" }}>
-          <span style={{ fontSize: "16px", color: "#6366f1", paddingLeft: "12px", paddingRight: "8px" }}>🔍</span>
+        <div style={{ position: "relative", zIndex: 1, borderRadius: "16px", background: "#ffffff", border: "1.5px solid #e4e4e7", boxShadow: "0 8px 24px -4px rgba(0, 0, 0, 0.06)", display: "flex", alignItems: "center", padding: "4px 6px" }}>
+          <span style={{ fontSize: "16px", color: "#0d9488", paddingLeft: "12px", paddingRight: "8px" }}>🔍</span>
           <input
             autoFocus={autoFocusSearch}
-            placeholder="Search name or phone…"
+            placeholder="Search patient name, phone..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            style={{ flex: 1, padding: "10px 4px", fontSize: "14px", border: "none", outline: "none", background: "transparent", color: "#18181b" }}
+            style={{ flex: 1, padding: "12px 4px", fontSize: "14px", fontWeight: 500, border: "none", outline: "none", background: "transparent", color: "#18181b" }}
           />
           <button onClick={() => {
             setShowFaceScanner(!showFaceScanner);
             setFaceMatches([]);
             setFaceSearchError(null);
           }} style={{ 
-            background: "linear-gradient(135deg, #e0f2fe 0%, #e0e7ff 100%)", 
-            color: "#4338ca", 
+            background: "linear-gradient(135deg, #0d9488 0%, #0284c7 100%)", 
+            color: "#ffffff", 
             border: "none", 
-            borderRadius: "10px", 
-            padding: "8px 12px", 
+            borderRadius: "12px", 
+            padding: "8px 14px", 
             fontSize: "12px", 
             fontWeight: 700, 
             cursor: "pointer", 
             display: "flex", 
             alignItems: "center", 
             gap: "6px",
-            boxShadow: "0 2px 8px rgba(99, 102, 241, 0.1)"
+            boxShadow: "0 4px 12px rgba(13, 148, 136, 0.25)",
+            transition: "transform 0.2s"
           }}>
-            📷 Face
+            <span>📷</span>
+            <span>Face ID</span>
           </button>
         </div>
+      </div>
+
+      {/* Filter Chips Bar */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        overflowX: "auto",
+        paddingBottom: "4px",
+        scrollbarWidth: "none"
+      }}>
+        <button
+          onClick={() => setActiveFilter("all")}
+          style={{
+            padding: "6px 14px",
+            borderRadius: "20px",
+            fontSize: "12px",
+            fontWeight: 700,
+            cursor: "pointer",
+            border: activeFilter === "all" ? "none" : "1px solid #e4e4e7",
+            background: activeFilter === "all" ? "#0f766e" : "#ffffff",
+            color: activeFilter === "all" ? "#ffffff" : "#71717a",
+            boxShadow: activeFilter === "all" ? "0 4px 12px rgba(15, 118, 110, 0.25)" : "none",
+            whiteSpace: "nowrap"
+          }}
+        >
+          All Patients
+        </button>
+
+        <button
+          onClick={() => setActiveFilter("encounters")}
+          style={{
+            padding: "6px 14px",
+            borderRadius: "20px",
+            fontSize: "12px",
+            fontWeight: 700,
+            cursor: "pointer",
+            border: activeFilter === "encounters" ? "none" : "1px solid #e4e4e7",
+            background: activeFilter === "encounters" ? "#0284c7" : "#ffffff",
+            color: activeFilter === "encounters" ? "#ffffff" : "#71717a",
+            boxShadow: activeFilter === "encounters" ? "0 4px 12px rgba(2, 132, 199, 0.25)" : "none",
+            whiteSpace: "nowrap"
+          }}
+        >
+          Recent Visits
+        </button>
+
+        <button
+          onClick={() => setActiveFilter("pending")}
+          style={{
+            padding: "6px 14px",
+            borderRadius: "20px",
+            fontSize: "12px",
+            fontWeight: 700,
+            cursor: "pointer",
+            border: activeFilter === "pending" ? "none" : "1px solid #e4e4e7",
+            background: activeFilter === "pending" ? "#d97706" : "#ffffff",
+            color: activeFilter === "pending" ? "#ffffff" : "#71717a",
+            boxShadow: activeFilter === "pending" ? "0 4px 12px rgba(217, 119, 6, 0.25)" : "none",
+            whiteSpace: "nowrap"
+          }}
+        >
+          Pending Diagnostics {stats?.pending ? `(${stats.pending})` : ""}
+        </button>
+
+        <button
+          onClick={() => setActiveFilter("allergies")}
+          style={{
+            padding: "6px 14px",
+            borderRadius: "20px",
+            fontSize: "12px",
+            fontWeight: 700,
+            cursor: "pointer",
+            border: activeFilter === "allergies" ? "none" : "1px solid #e4e4e7",
+            background: activeFilter === "allergies" ? "#dc2626" : "#ffffff",
+            color: activeFilter === "allergies" ? "#ffffff" : "#71717a",
+            boxShadow: activeFilter === "allergies" ? "0 4px 12px rgba(220, 38, 38, 0.25)" : "none",
+            whiteSpace: "nowrap"
+          }}
+        >
+          Known Allergies {stats?.allergies ? `(${stats.allergies})` : ""}
+        </button>
       </div>
 
       {showFaceScanner && (
         <div style={{
           position: "fixed",
           inset: 0,
-          backgroundColor: "rgba(0,0,0,0.6)",
-          backdropFilter: "blur(4px)",
+          backgroundColor: "rgba(0,0,0,0.65)",
+          backdropFilter: "blur(6px)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -118,10 +224,11 @@ export default function PatientListClient({
             display: "flex",
             flexDirection: "column",
             gap: "16px",
-            boxShadow: "0 20px 40px rgba(0,0,0,0.3)"
+            borderRadius: "24px",
+            boxShadow: "0 24px 48px rgba(0,0,0,0.35)"
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3 style={{ fontSize: "16px", fontWeight: "700", color: "var(--ink)" }}>Face Search</h3>
+              <h3 style={{ fontSize: "16px", fontWeight: "800", color: "#0f766e" }}>Biometric Face Search</h3>
               <button 
                 type="button" 
                 onClick={() => {
@@ -138,9 +245,9 @@ export default function PatientListClient({
             <div style={{ 
               width: "100%", 
               aspectRatio: "1 / 1", 
-              borderRadius: "14px", 
+              borderRadius: "18px", 
               overflow: "hidden",
-              border: "1.5px solid var(--border)"
+              border: "2px solid #0d9488"
             }}>
               <FaceScanner 
                 onCapture={(data) => {
@@ -150,8 +257,8 @@ export default function PatientListClient({
               />
             </div>
             
-            <p style={{ fontSize: "11px", color: "var(--muted)", textAlign: "center", margin: 0 }}>
-              Align the patient's face inside the preview window.
+            <p style={{ fontSize: "11px", color: "var(--muted)", textAlign: "center", margin: 0, fontWeight: 500 }}>
+              Align the patient's face inside the camera preview window.
             </p>
           </div>
         </div>
@@ -162,7 +269,7 @@ export default function PatientListClient({
           {searchingFace && (
             <div className="ai-processing">
               <div className="ai-dot" />
-              <span className="ai-text">Matching face against patients...</span>
+              <span className="ai-text">Matching face against patient database...</span>
             </div>
           )}
 
@@ -204,18 +311,21 @@ export default function PatientListClient({
         </div>
       )}
 
-      <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#71717a", paddingLeft: "4px", marginTop: "8px" }}>
-        {query ? `Results for "${query}"` : "Recent patients"}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingLeft: "4px", marginTop: "4px" }}>
+        <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#71717a" }}>
+          {query ? `Search results (${displayedPatients.length})` : `Patient List (${displayedPatients.length})`}
+        </div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-        {patients.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "48px 20px", color: "#a1a1aa", background: "#f4f4f5", borderRadius: "16px", border: "1px dashed #d4d4d8" }}>
-            <div style={{ fontSize: "36px", marginBottom: "12px", opacity: 0.5 }}>👥</div>
-            <p style={{ fontSize: "15px", fontWeight: 600, margin: 0 }}>No patients found.</p>
+        {displayedPatients.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "48px 20px", color: "#a1a1aa", background: "#ffffff", borderRadius: "20px", border: "1px dashed #d4d4d8", boxShadow: "0 2px 10px rgba(0,0,0,0.02)" }}>
+            <div style={{ fontSize: "36px", marginBottom: "12px", opacity: 0.6 }}>📁</div>
+            <p style={{ fontSize: "15px", fontWeight: 700, margin: 0, color: "#3f3f46" }}>No matching patients found.</p>
+            <p style={{ fontSize: "13px", color: "#a1a1aa", marginTop: "4px" }}>Try adjusting your search query or active filter.</p>
           </div>
         ) : (
-          patients.map((p) => <PatientRow key={p.id} patient={p} />)
+          displayedPatients.map((p) => <PatientRow key={p.id} patient={p} />)
         )}
       </div>
     </div>
