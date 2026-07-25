@@ -87,6 +87,7 @@ export default function VoiceRecorder({
         setStatusMsg("Processing audio...");
         setAudioLevel(0);
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
 
         const actualMime = mediaRecorder.mimeType || selectedMimeType;
         const audioBlobObj = new Blob(audioChunksRef.current, { type: actualMime });
@@ -117,7 +118,6 @@ export default function VoiceRecorder({
   function stopRecording() {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop();
-      if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
     }
   }
 
