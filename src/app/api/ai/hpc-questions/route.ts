@@ -50,6 +50,21 @@ Ensure the questions are clinically relevant to "${segmentLabel}".
     });
 
     if (!response.ok) {
+      const errText = await response.text();
+      if (response.status === 429) {
+        let waitTime = "a few seconds";
+        try {
+          const errJson = JSON.parse(errText);
+          const details = errJson?.error?.details || [];
+          const retryInfo = details.find((d: any) => d["@type"] === "type.googleapis.com/google.rpc.RetryInfo");
+          if (retryInfo?.retryDelay) waitTime = retryInfo.retryDelay;
+        } catch (e) {}
+        return NextResponse.json(
+          { error: `You're on free tier and quota has exceeded, please wait ${waitTime} to 'generate questions' or upgrade to pro version by contacting admin.` },
+          { status: 429 }
+        );
+      }
+      console.error("Gemini API error:", errText);
       return NextResponse.json({ error: "Failed to reach AI provider" }, { status: 500 });
     }
 

@@ -39,6 +39,9 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
     if (res.ok) {
       const data = await res.json();
       return data.text || "";
+    } else if (res.status === 429) {
+      const data = await res.json();
+      throw new Error(data.error);
     }
   } catch (e) {
     console.warn("Audio transcription request failed:", e);
