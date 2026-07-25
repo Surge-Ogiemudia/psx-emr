@@ -143,6 +143,7 @@ model Complaint {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
   encounterId     String   @unique @db.ObjectId
   voiceTranscript String?
+  audioUrl        String?
   images          String   @default("[]") // JSON array of URLs
   files           String   @default("[]") // JSON array of URLs
   textInput       String?

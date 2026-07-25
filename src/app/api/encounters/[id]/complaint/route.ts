@@ -10,6 +10,7 @@ export async function PUT(
 
   const data = {
     voiceTranscript: body.voiceTranscript ?? null,
+    audioUrl: body.audioUrl ?? null,
     images: JSON.stringify(body.images ?? []),
     files: JSON.stringify(body.files ?? []),
     textInput: body.textInput ?? null,
