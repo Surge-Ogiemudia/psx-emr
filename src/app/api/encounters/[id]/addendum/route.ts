@@ -13,7 +13,7 @@ export async function POST(
     return NextResponse.json({ error: "Addendum text is required" }, { status: 400 });
   }
 
-  const pharmacy = await getCurrentPharmacy(req);
+  const pharmacy = await getCurrentPharmacy();
   if (!pharmacy) return NextResponse.json({ error: "No pharmacy context" }, { status: 400 });
   const staff = await getCurrentStaff(pharmacy.id);
   if (!staff) return NextResponse.json({ error: "No staff context" }, { status: 400 });
