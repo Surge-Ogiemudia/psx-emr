@@ -37,9 +37,11 @@ const ROUTE_BY_EXIT: Record<ExitType, string> = {
 export default function ManagementSelector({
   encounterId,
   allowDiagnostics = true,
+  clinicalContext,
 }: {
   encounterId: string;
   allowDiagnostics?: boolean;
+  clinicalContext?: any;
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState<ExitType | null>(null);
