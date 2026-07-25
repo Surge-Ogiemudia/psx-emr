@@ -32,6 +32,9 @@ export default async function HistoryPage({
           conditions={encounter.patient.chronicConditions}
           medications={encounter.patient.currentMedications}
           allergies={encounter.patient.knownAllergies}
+          existingSnapshot={encounter.historySnapshot}
+          complaintSegments={encounter.complaint?.complaintSegments}
+          lastVisitAt={encounter.patient.lastVisitAt?.toISOString() || encounter.patient.createdAt.toISOString()}
         />
       </div>
       <FooterDisclaimer />
