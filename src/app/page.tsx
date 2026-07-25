@@ -130,53 +130,59 @@ export default async function HomePage() {
       </div>
       <FooterDisclaimer />
       
-      {/* Floating Action Dock */}
+      {/* Floating Action Dock (Always in view, sticky over all content, mobile-safe) */}
       <div style={{ 
         position: "fixed", 
-        bottom: "max(20px, env(safe-area-inset-bottom))", 
+        bottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)", 
         left: "50%",
         transform: "translateX(-50%)",
         display: "flex", 
         alignItems: "center",
+        justifyContent: "center",
         gap: "10px", 
-        zIndex: 50,
-        background: "rgba(255, 255, 255, 0.85)",
-        backdropFilter: "blur(16px)",
+        zIndex: 9999,
+        background: "rgba(255, 255, 255, 0.92)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
         padding: "8px 12px",
         borderRadius: "40px",
-        border: "1px solid rgba(228, 228, 231, 0.8)",
-        boxShadow: "0 12px 36px -8px rgba(0, 0, 0, 0.15)"
+        border: "1px solid rgba(228, 228, 231, 0.9)",
+        boxShadow: "0 14px 40px -6px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.08)",
+        maxWidth: "calc(100vw - 32px)",
+        width: "max-content"
       }}>
         <Link href="/dispensary" style={{
           background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
           color: "white",
-          fontWeight: 700,
+          fontWeight: 800,
           fontSize: "13px",
-          padding: "10px 18px",
-          borderRadius: "24px",
-          boxShadow: "0 4px 14px rgba(245, 158, 11, 0.35)",
+          padding: "11px 20px",
+          borderRadius: "26px",
+          boxShadow: "0 4px 14px rgba(245, 158, 11, 0.4)",
           display: "flex",
           alignItems: "center",
           gap: "6px",
           textDecoration: "none",
+          whiteSpace: "nowrap",
           transition: "transform 0.2s"
         }}>
-          <span>💊</span>
+          <span style={{ fontSize: "15px" }}>💊</span>
           <span>Dispensary</span>
         </Link>
         
         <Link href="/encounter/new" style={{
           background: "linear-gradient(135deg, #0ea5e9 0%, #0d9488 100%)",
           color: "white",
-          fontWeight: 700,
+          fontWeight: 800,
           fontSize: "13px",
-          padding: "10px 20px",
-          borderRadius: "24px",
-          boxShadow: "0 4px 16px rgba(13, 148, 136, 0.4)",
+          padding: "11px 22px",
+          borderRadius: "26px",
+          boxShadow: "0 4px 16px rgba(13, 148, 136, 0.45)",
           display: "flex",
           alignItems: "center",
           gap: "6px",
           textDecoration: "none",
+          whiteSpace: "nowrap",
           transition: "transform 0.2s"
         }}>
           <span style={{ fontSize: "16px", lineHeight: 1 }}>＋</span>
