@@ -183,6 +183,15 @@ model PatientHistorySnapshot {
   medications  String   @default("[]")
   allergies    String   @default("[]")
 
+  socialHistory   String?
+  familyHistory   String?
+  surgicalHistory String?
+  additionalNotes String?
+
+  historyAudioUrl        String?
+  historyVoiceTranscript String?
+  aiRiskAnalysis         String?
+
   bloodPressure String?
   temperature   Float?
   bloodSugar    Float?
