@@ -11,6 +11,7 @@ export async function GET(
     where: { id },
     include: {
       patient: true,
+      staff: { select: { fullName: true } },
       complaint: true,
       hpcs: true,
       historySnapshot: true,

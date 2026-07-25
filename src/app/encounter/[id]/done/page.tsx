@@ -24,10 +24,13 @@ export default async function DonePage({
             ? `Sent to POS — transaction ${plan.linkedTransactionId} is ready at the counter.`
             : "This encounter has been saved to the patient record."}
         </div>
-        <Link href={`/patients/${encounter.patientId}`} className="cta-btn" style={{ marginTop: 16, maxWidth: 280 }}>
+        <Link href={`/encounter/${encounter.id}/review`} className="cta-btn" style={{ marginTop: 24, maxWidth: 280 }}>
+          Review full encounter
+        </Link>
+        <Link href={`/patients/${encounter.patientId}`} className="cta-btn secondary" style={{ marginTop: 16, maxWidth: 280 }}>
           View patient record
         </Link>
-        <Link href="/" className="cta-btn secondary" style={{ maxWidth: 280 }}>
+        <Link href="/" className="cta-btn secondary" style={{ maxWidth: 280, marginTop: 16 }}>
           Back to patients
         </Link>
       </div>
