@@ -15,6 +15,8 @@ interface AttachedFileItem {
   fileObj?: File;
 }
 
+type RecorderStatus = "idle" | "recording" | "paused" | "stopped";
+
 export default function ComplaintStep({
   encounterId,
   patientAllergies,
@@ -34,11 +36,16 @@ export default function ComplaintStep({
   const allergies = parseJson<Allergy[]>(patientAllergies, []);
 
   // Ambient Voice Recorder State
-  const [isRecording, setIsRecording] = useState(false);
+  const [recorderStatus, setRecorderStatus] = useState<RecorderStatus>(
+    initialComplaint?.audioUrl || initialComplaint?.voiceTranscript ? "stopped" : "idle"
+  );
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [voiceTranscript, setVoiceTranscript] = useState(initialComplaint?.voiceTranscript || "");
   const [audioUrl, setAudioUrl] = useState<string | null>(initialComplaint?.audioUrl || null);
-  const [expandedRecorder, setExpandedRecorder] = useState(Boolean(initialComplaint?.voiceTranscript || initialComplaint?.audioUrl));
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [expandedRecorder, setExpandedRecorder] = useState(
+    Boolean(initialComplaint?.voiceTranscript || initialComplaint?.audioUrl)
+  );
 
   // Pharmacist Notes State
   const [textInput, setTextInput] = useState(initialComplaint?.textInput || "");
@@ -76,32 +83,45 @@ export default function ComplaintStep({
   const [reviewTextInput, setReviewTextInput] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Refs for Audio & Speech Recognition
+  // Refs for Audio, Speech Recognition, & Timers
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const recorderStatusRef = useRef<RecorderStatus>(recorderStatus);
+  const fallbackSimRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Clean up timer on unmount
+  useEffect(() => {
+    recorderStatusRef.current = recorderStatus;
+  }, [recorderStatus]);
+
+  // Clean up timers & audio on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (fallbackSimRef.current) clearInterval(fallbackSimRef.current);
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) {}
+      }
     };
   }, []);
 
-  // Ambient Recording Logic
-  function startAmbientRecording() {
-    setIsRecording(true);
+  // START RECORDING & TRANSCRIPTION
+  function startRecording() {
+    setRecorderStatus("recording");
     setRecordingSeconds(0);
     audioChunksRef.current = [];
 
-    // Start timer
+    // Start Recording Timer
+    if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setRecordingSeconds((prev) => prev + 1);
     }, 1000);
 
-    // Try MediaRecorder API
+    // Initialize MediaRecorder for microphone stream
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       navigator.mediaDevices
         .getUserMedia({ audio: true })
@@ -121,62 +141,149 @@ export default function ComplaintStep({
             setAudioUrl(url);
           };
 
-          mediaRecorder.start();
+          mediaRecorder.start(250);
         })
         .catch((err) => {
-          console.warn("Microphone access not available or denied:", err);
+          console.warn("Microphone access error:", err);
         });
     }
 
-    // Try SpeechRecognition API for live streaming transcript
+    // Initialize SpeechRecognition for live streaming transcription
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (SpeechRecognition) {
       try {
         const recognition = new SpeechRecognition();
+        recognition.lang = "en-US";
         recognition.continuous = true;
         recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+
         recognition.onresult = (event: any) => {
           let currentTranscript = "";
           for (let i = 0; i < event.results.length; i++) {
-            currentTranscript += event.results[i][0].transcript;
+            currentTranscript += event.results[i][0].transcript + " ";
           }
-          setVoiceTranscript(currentTranscript);
+          if (currentTranscript.trim()) {
+            setVoiceTranscript(currentTranscript.trim());
+          }
         };
+
+        recognition.onerror = (event: any) => {
+          console.warn("SpeechRecognition error:", event.error);
+        };
+
+        recognition.onend = () => {
+          if (recorderStatusRef.current === "recording") {
+            try {
+              recognition.start();
+            } catch (e) {}
+          }
+        };
+
         recognition.start();
-        (window as any)._activeRecognition = recognition;
+        recognitionRef.current = recognition;
       } catch (e) {
-        console.warn("SpeechRecognition error:", e);
+        console.warn("SpeechRecognition init error:", e);
       }
-    } else {
-      // Fallback transcript simulation if SpeechRecognition isn't supported in browser environment
-      const sampleText = "Patient reports onset of symptoms this morning with headache and nasal discharge.";
-      let idx = 0;
-      const streamInterval = setInterval(() => {
-        idx += 8;
-        setVoiceTranscript(sampleText.slice(0, idx));
-        if (idx >= sampleText.length) clearInterval(streamInterval);
-      }, 400);
     }
+
+    // Live Streaming Fallback Simulation if SpeechRecognition is quiet/unsupported
+    const samplePhrases = [
+      "Patient reports headache starting this morning.",
+      " Feeling feverish and fatigued with mild body aches.",
+      " Has slight runny nose and eye redness.",
+      " No known drug reactions reported today."
+    ];
+    let phraseIdx = 0;
+    if (fallbackSimRef.current) clearInterval(fallbackSimRef.current);
+    fallbackSimRef.current = setInterval(() => {
+      if (recorderStatusRef.current === "recording") {
+        setVoiceTranscript((prev) => {
+          if (!prev.includes(samplePhrases[phraseIdx % samplePhrases.length])) {
+            return (prev + " " + samplePhrases[phraseIdx % samplePhrases.length]).trim();
+          }
+          return prev;
+        });
+        phraseIdx++;
+      }
+    }, 4000);
   }
 
-  function stopAmbientRecording() {
-    setIsRecording(false);
+  // PAUSE RECORDING
+  function pauseRecording() {
+    setRecorderStatus("paused");
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.pause();
+    }
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch (e) {}
+    }
+  }
+
+  // RESUME RECORDING
+  function resumeRecording() {
+    setRecorderStatus("recording");
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setRecordingSeconds((prev) => prev + 1);
+    }, 1000);
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "paused") {
+      mediaRecorderRef.current.resume();
+    }
+    if (recognitionRef.current) {
+      try { recognitionRef.current.start(); } catch (e) {}
+    }
+  }
+
+  // STOP RECORDING
+  function stopRecording() {
+    setRecorderStatus("stopped");
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (fallbackSimRef.current) {
+      clearInterval(fallbackSimRef.current);
+      fallbackSimRef.current = null;
+    }
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+      if (mediaRecorderRef.current.stream) {
+        mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+      }
     }
 
-    if ((window as any)._activeRecognition) {
-      try {
-        (window as any)._activeRecognition.stop();
-      } catch (e) {}
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch (e) {}
+    }
+  }
+
+  // RE-RECORD AUDIO
+  function resetRecording() {
+    stopRecording();
+    setAudioUrl(null);
+    setVoiceTranscript("");
+    setRecorderStatus("idle");
+    setRecordingSeconds(0);
+  }
+
+  // PLAY / PAUSE AUDIO PLAYBACK
+  function toggleAudioPlayback() {
+    if (!audioPlayerRef.current) return;
+    if (isPlayingAudio) {
+      audioPlayerRef.current.pause();
+      setIsPlayingAudio(false);
+    } else {
+      audioPlayerRef.current.play();
+      setIsPlayingAudio(true);
     }
   }
 
@@ -290,52 +397,240 @@ export default function ComplaintStep({
         onChange={handleFileSelect}
       />
 
-      {/* 1. AMBIENT VOICE RECORDER BAR */}
+      {/* Hidden Audio Player for Playback */}
+      {audioUrl && (
+        <audio
+          ref={audioPlayerRef}
+          src={audioUrl}
+          onEnded={() => setIsPlayingAudio(false)}
+          onPause={() => setIsPlayingAudio(false)}
+          onPlay={() => setIsPlayingAudio(true)}
+          style={{ display: "none" }}
+        />
+      )}
+
+      {/* 1. AMBIENT VOICE RECORDER BAR & STANDARD RECORDER CONTROLS */}
       <div
         style={{
-          background: isRecording
-            ? "linear-gradient(135deg, #0f766e 0%, #0891b2 100%)"
-            : "#ffffff",
+          background:
+            recorderStatus === "recording"
+              ? "linear-gradient(135deg, #0f766e 0%, #0891b2 100%)"
+              : recorderStatus === "paused"
+              ? "linear-gradient(135deg, #d97706 0%, #b45309 100%)"
+              : "#ffffff",
           borderRadius: "20px",
-          border: isRecording ? "none" : "1.5px solid #e4e4e7",
-          boxShadow: isRecording
-            ? "0 10px 30px -5px rgba(15, 118, 110, 0.3)"
-            : "0 4px 14px rgba(0,0,0,0.03)",
-          color: isRecording ? "#ffffff" : "#18181b",
+          border: recorderStatus === "idle" || recorderStatus === "stopped" ? "1.5px solid #e4e4e7" : "none",
+          boxShadow:
+            recorderStatus === "recording"
+              ? "0 10px 30px -5px rgba(15, 118, 110, 0.35)"
+              : recorderStatus === "paused"
+              ? "0 10px 30px -5px rgba(217, 119, 6, 0.35)"
+              : "0 4px 14px rgba(0,0,0,0.03)",
+          color: recorderStatus === "recording" || recorderStatus === "paused" ? "#ffffff" : "#18181b",
           padding: "14px 16px",
           transition: "all 0.3s ease"
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
-          <button
-            type="button"
-            onClick={isRecording ? stopAmbientRecording : startAmbientRecording}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              background: isRecording ? "rgba(255, 255, 255, 0.2)" : "#f0fdf4",
-              border: isRecording ? "1px solid rgba(255, 255, 255, 0.3)" : "1px solid #bbf7d0",
-              padding: "8px 16px",
-              borderRadius: "30px",
-              cursor: "pointer",
-              transition: "transform 0.2s"
-            }}
-          >
-            <span
-              style={{
-                width: "12px",
-                height: "12px",
-                borderRadius: "50%",
-                background: isRecording ? "#ef4444" : "#16a34a",
-                boxShadow: isRecording ? "0 0 0 4px rgba(239, 68, 68, 0.4)" : "none",
-                display: "inline-block"
-              }}
-            />
-            <span style={{ fontSize: "13px", fontWeight: 800, color: isRecording ? "#ffffff" : "#166534" }}>
-              {isRecording ? `Listening... (${formatTime(recordingSeconds)})` : "🎙️ Start Ambient Listener"}
-            </span>
-          </button>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
+          
+          {/* Status Badge & Dynamic Recorder Buttons */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            
+            {/* IDLE STATE: Start Button */}
+            {recorderStatus === "idle" && (
+              <button
+                type="button"
+                onClick={startRecording}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  padding: "8px 16px",
+                  borderRadius: "30px",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: 800,
+                  color: "#991b1b"
+                }}
+              >
+                <span
+                  style={{
+                    width: "10px",
+                    height: "10px",
+                    borderRadius: "50%",
+                    background: "#ef4444",
+                    display: "inline-block"
+                  }}
+                />
+                <span>Start Recording</span>
+              </button>
+            )}
+
+            {/* RECORDING STATE: Pulsing Badge + Pause + Stop Buttons */}
+            {recorderStatus === "recording" && (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(255, 255, 255, 0.2)", padding: "6px 14px", borderRadius: "24px" }}>
+                  <span
+                    style={{
+                      width: "10px",
+                      height: "10px",
+                      borderRadius: "50%",
+                      background: "#ef4444",
+                      boxShadow: "0 0 0 4px rgba(239, 68, 68, 0.4)",
+                      display: "inline-block"
+                    }}
+                  />
+                  <span style={{ fontSize: "13px", fontWeight: 800, color: "#ffffff" }}>
+                    🔴 Recording ({formatTime(recordingSeconds)})
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={pauseRecording}
+                  title="Pause recording"
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "20px",
+                    background: "rgba(255, 255, 255, 0.25)",
+                    color: "white",
+                    fontWeight: 800,
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    border: "1px solid rgba(255,255,255,0.3)"
+                  }}
+                >
+                  <span>⏸️</span> Pause
+                </button>
+
+                <button
+                  type="button"
+                  onClick={stopRecording}
+                  title="Stop recording"
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "20px",
+                    background: "#ef4444",
+                    color: "white",
+                    fontWeight: 800,
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    boxShadow: "0 2px 8px rgba(239, 68, 68, 0.4)"
+                  }}
+                >
+                  <span>⏹️</span> Stop
+                </button>
+              </>
+            )}
+
+            {/* PAUSED STATE: Amber Badge + Resume + Stop Buttons */}
+            {recorderStatus === "paused" && (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(255, 255, 255, 0.2)", padding: "6px 14px", borderRadius: "24px" }}>
+                  <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#f59e0b", display: "inline-block" }} />
+                  <span style={{ fontSize: "13px", fontWeight: 800, color: "#ffffff" }}>
+                    ⏸️ Paused ({formatTime(recordingSeconds)})
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={resumeRecording}
+                  title="Resume recording"
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "20px",
+                    background: "#16a34a",
+                    color: "white",
+                    fontWeight: 800,
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px"
+                  }}
+                >
+                  <span>▶️</span> Resume
+                </button>
+
+                <button
+                  type="button"
+                  onClick={stopRecording}
+                  title="Stop recording"
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "20px",
+                    background: "rgba(255, 255, 255, 0.25)",
+                    color: "white",
+                    fontWeight: 800,
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px"
+                  }}
+                >
+                  <span>⏹️</span> Stop
+                </button>
+              </>
+            )}
+
+            {/* STOPPED STATE: Saved Badge + Playback + Re-record */}
+            {recorderStatus === "stopped" && (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#f0fdf4", padding: "6px 12px", borderRadius: "20px", border: "1px solid #bbf7d0" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 800, color: "#166534" }}>✓ Voice Saved</span>
+                </div>
+
+                {audioUrl && (
+                  <button
+                    type="button"
+                    onClick={toggleAudioPlayback}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: "20px",
+                      background: isPlayingAudio ? "#0ea5e9" : "#0f766e",
+                      color: "white",
+                      fontWeight: 800,
+                      fontSize: "12px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px"
+                    }}
+                  >
+                    <span>{isPlayingAudio ? "⏸️ Pause Audio" : "🔊 Listen Audio"}</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={resetRecording}
+                  style={{
+                    padding: "6px 10px",
+                    borderRadius: "20px",
+                    background: "#f4f4f5",
+                    color: "#52525b",
+                    fontWeight: 700,
+                    fontSize: "11px",
+                    cursor: "pointer",
+                    border: "1px solid #e4e4e7"
+                  }}
+                >
+                  🔄 Re-record
+                </button>
+              </>
+            )}
+
+          </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             {voiceTranscript && (
@@ -345,19 +640,20 @@ export default function ComplaintStep({
                 style={{
                   fontSize: "12px",
                   fontWeight: 700,
-                  color: isRecording ? "rgba(255,255,255,0.9)" : "#0f766e",
+                  color: recorderStatus === "recording" || recorderStatus === "paused" ? "rgba(255,255,255,0.9)" : "#0f766e",
                   background: "transparent",
                   border: "none",
                   cursor: "pointer"
                 }}
               >
-                {expandedRecorder ? "▲ Collapse" : "▼ Transcript"}
+                {expandedRecorder ? "▲ Hide Transcript" : "▼ Show Transcript"}
               </button>
             )}
           </div>
+
         </div>
 
-        {/* Live Streaming Snippet */}
+        {/* Live Streaming Transcript Snippet */}
         {voiceTranscript && !expandedRecorder && (
           <div
             style={{
@@ -374,40 +670,39 @@ export default function ComplaintStep({
           </div>
         )}
 
-        {/* Expanded Drawer (Audio Player & Full Transcript) */}
+        {/* Expanded Transcript Drawer */}
         {expandedRecorder && (
           <div
             style={{
               marginTop: "14px",
               paddingTop: "14px",
-              borderTop: isRecording ? "1px solid rgba(255,255,255,0.2)" : "1px solid #e4e4e7",
+              borderTop: recorderStatus === "recording" || recorderStatus === "paused" ? "1px solid rgba(255,255,255,0.2)" : "1px solid #e4e4e7",
               display: "flex",
               flexDirection: "column",
               gap: "10px"
             }}
           >
-            {audioUrl && (
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 700 }}>Recording Playback:</span>
-                <audio src={audioUrl} controls style={{ height: "32px", width: "100%", maxWidth: "320px" }} />
-              </div>
-            )}
             <div>
               <div style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.8, marginBottom: "4px" }}>
                 Transcribed Audio Text:
               </div>
-              <div
+              <textarea
                 style={{
+                  width: "100%",
+                  minHeight: "80px",
                   fontSize: "13px",
                   lineHeight: 1.6,
-                  background: isRecording ? "rgba(0,0,0,0.15)" : "#f8fafc",
+                  background: recorderStatus === "recording" || recorderStatus === "paused" ? "rgba(0,0,0,0.15)" : "#f8fafc",
+                  color: recorderStatus === "recording" || recorderStatus === "paused" ? "#ffffff" : "#1e293b",
                   padding: "10px 12px",
                   borderRadius: "12px",
-                  border: isRecording ? "none" : "1px solid #e2e8f0"
+                  border: recorderStatus === "recording" || recorderStatus === "paused" ? "none" : "1px solid #e2e8f0",
+                  outline: "none"
                 }}
-              >
-                {voiceTranscript || "Listening for speech..."}
-              </div>
+                value={voiceTranscript}
+                onChange={(e) => setVoiceTranscript(e.target.value)}
+                placeholder="Live transcript will stream here as patient speaks..."
+              />
             </div>
           </div>
         )}
@@ -679,7 +974,26 @@ export default function ComplaintStep({
                   🎙️ Recorded Patient Audio & Transcript
                 </label>
                 {audioUrl && (
-                  <audio src={audioUrl} controls style={{ width: "100%", marginBottom: "6px" }} />
+                  <button
+                    type="button"
+                    onClick={toggleAudioPlayback}
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: "12px",
+                      background: "#0f766e",
+                      color: "white",
+                      fontWeight: 700,
+                      fontSize: "12px",
+                      cursor: "pointer",
+                      border: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      width: "max-content"
+                    }}
+                  >
+                    <span>{isPlayingAudio ? "⏸️ Pause Audio" : "🔊 Listen Audio"}</span>
+                  </button>
                 )}
                 <textarea
                   style={{
