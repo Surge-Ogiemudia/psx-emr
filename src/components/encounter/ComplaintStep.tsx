@@ -42,6 +42,8 @@ export default function ComplaintStep({
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [voiceTranscript, setVoiceTranscript] = useState(initialComplaint?.voiceTranscript || "");
   const [audioUrl, setAudioUrl] = useState<string | null>(initialComplaint?.audioUrl || null);
+  const [audioLevel, setAudioLevel] = useState(0); // Mic volume visualizer level (0-100)
+  const [speechStatus, setSpeechStatus] = useState("");
   const [expandedRecorder, setExpandedRecorder] = useState(
     Boolean(initialComplaint?.voiceTranscript || initialComplaint?.audioUrl)
   );
@@ -82,11 +84,13 @@ export default function ComplaintStep({
   const [reviewTextInput, setReviewTextInput] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Refs for Audio, Speech Recognition, & Timers
+  // Refs for Audio, AudioContext Visualizer, Speech Recognition, & Timers
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recognitionRef = useRef<any>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const animFrameRef = useRef<number | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const recorderStatusRef = useRef<RecorderStatus>(recorderStatus);
@@ -95,10 +99,14 @@ export default function ComplaintStep({
     recorderStatusRef.current = recorderStatus;
   }, [recorderStatus]);
 
-  // Clean up timers & speech recognition on unmount
+  // Clean up timers, audio contexts & speech recognition on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (audioContextRef.current) {
+        try { audioContextRef.current.close(); } catch (e) {}
+      }
       if (recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch (e) {}
       }
@@ -109,6 +117,7 @@ export default function ComplaintStep({
   function startRecording() {
     setRecorderStatus("recording");
     setRecordingSeconds(0);
+    setSpeechStatus("Requesting mic access...");
     audioChunksRef.current = [];
 
     // Start Recording Timer
@@ -117,23 +126,58 @@ export default function ComplaintStep({
       setRecordingSeconds((prev) => prev + 1);
     }, 1000);
 
-    // Detect browser supported audio MIME type for universal playback (iOS Safari / Chrome / Android)
+    // Detect supported audio MIME type
     let selectedMimeType = "audio/webm";
     if (typeof MediaRecorder !== "undefined") {
-      if (MediaRecorder.isTypeSupported("audio/mp4")) {
-        selectedMimeType = "audio/mp4";
-      } else if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+      if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
         selectedMimeType = "audio/webm;codecs=opus";
+      } else if (MediaRecorder.isTypeSupported("audio/mp4")) {
+        selectedMimeType = "audio/mp4";
       } else if (MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")) {
         selectedMimeType = "audio/ogg;codecs=opus";
       }
     }
 
-    // Initialize MediaRecorder for real microphone audio recording
+    // Initialize MediaRecorder & Web Audio API Visualizer for microphone audio
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       navigator.mediaDevices
         .getUserMedia({ audio: true })
         .then((stream) => {
+          setSpeechStatus("🎙️ Mic active - speak clearly...");
+
+          // Web Audio API volume visualizer
+          try {
+            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+            if (AudioCtx) {
+              const audioCtx = new AudioCtx();
+              audioContextRef.current = audioCtx;
+              const source = audioCtx.createMediaStreamSource(stream);
+              const analyser = audioCtx.createAnalyser();
+              analyser.fftSize = 64;
+              source.connect(analyser);
+              const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+              const updateVolume = () => {
+                if (recorderStatusRef.current === "recording") {
+                  analyser.getByteFrequencyData(dataArray);
+                  let sum = 0;
+                  for (let i = 0; i < dataArray.length; i++) {
+                    sum += dataArray[i];
+                  }
+                  const avg = sum / dataArray.length;
+                  setAudioLevel(Math.min(100, Math.round((avg / 128) * 100)));
+                  animFrameRef.current = requestAnimationFrame(updateVolume);
+                } else {
+                  setAudioLevel(0);
+                }
+              };
+              updateVolume();
+            }
+          } catch (e) {
+            console.warn("AudioContext visualizer error:", e);
+          }
+
+          // Create MediaRecorder instance
           const mediaRecorder = new MediaRecorder(
             stream,
             selectedMimeType ? { mimeType: selectedMimeType } : undefined
@@ -146,31 +190,43 @@ export default function ComplaintStep({
             }
           };
 
+          // STOP HANDLER: Create playable audio Blob AND THEN stop mic stream tracks
           mediaRecorder.onstop = () => {
             const actualMime = mediaRecorder.mimeType || selectedMimeType || "audio/webm";
             const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
             const url = URL.createObjectURL(audioBlob);
             setAudioUrl(url);
+
+            // Clean up microphone stream tracks AFTER creating blob URL
+            stream.getTracks().forEach((t) => t.stop());
+            setAudioLevel(0);
           };
 
-          mediaRecorder.start(200);
+          mediaRecorder.start(250);
         })
         .catch((err) => {
-          console.warn("Microphone permission error or unsupported:", err);
+          console.error("Microphone permission error or unsupported:", err);
+          setSpeechStatus("❌ Mic access denied. Please allow microphone permissions.");
         });
+    } else {
+      setSpeechStatus("❌ Microphone not supported in this browser.");
     }
 
-    // Initialize SpeechRecognition for 100% real spoken voice transcription
+    // Initialize Web SpeechRecognition
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (SpeechRecognition) {
       try {
         const recognition = new SpeechRecognition();
-        recognition.lang = "en-US";
+        recognition.lang = navigator.language || "en-US";
         recognition.continuous = true;
         recognition.interimResults = true;
         recognition.maxAlternatives = 1;
+
+        recognition.onstart = () => {
+          setSpeechStatus("🎙️ Transcribing live speech...");
+        };
 
         recognition.onresult = (event: any) => {
           let currentTranscript = "";
@@ -184,6 +240,9 @@ export default function ComplaintStep({
 
         recognition.onerror = (event: any) => {
           console.warn("SpeechRecognition error:", event.error);
+          if (event.error === "not-allowed") {
+            setSpeechStatus("⚠️ Speech permission blocked by browser.");
+          }
         };
 
         recognition.onend = () => {
@@ -199,12 +258,15 @@ export default function ComplaintStep({
       } catch (e) {
         console.warn("SpeechRecognition init error:", e);
       }
+    } else {
+      setSpeechStatus("⚠️ Speech API unavailable. Audio is recording properly.");
     }
   }
 
   // PAUSE RECORDING
   function pauseRecording() {
     setRecorderStatus("paused");
+    setSpeechStatus("⏸️ Recording paused.");
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -220,6 +282,7 @@ export default function ComplaintStep({
   // RESUME RECORDING
   function resumeRecording() {
     setRecorderStatus("recording");
+    setSpeechStatus("🎙️ Resumed recording...");
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setRecordingSeconds((prev) => prev + 1);
@@ -236,6 +299,8 @@ export default function ComplaintStep({
   // STOP RECORDING & GENERATE AUDIO PLAYBACK
   function stopRecording() {
     setRecorderStatus("stopped");
+    setSpeechStatus("✓ Recording completed. Play back audio below.");
+
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -243,9 +308,6 @@ export default function ComplaintStep({
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
-      if (mediaRecorderRef.current.stream) {
-        mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
-      }
     }
 
     if (recognitionRef.current) {
@@ -260,6 +322,7 @@ export default function ComplaintStep({
     setVoiceTranscript("");
     setRecorderStatus("idle");
     setRecordingSeconds(0);
+    setSpeechStatus("");
   }
 
   // Handle File Selections
@@ -450,6 +513,13 @@ export default function ComplaintStep({
                   </span>
                 </div>
 
+                {/* Mic Audio Level Meter */}
+                <div style={{ display: "flex", alignItems: "center", gap: "3px", height: "16px", background: "rgba(0,0,0,0.15)", padding: "0 6px", borderRadius: "8px" }}>
+                  <div style={{ width: "4px", height: `${Math.max(4, audioLevel * 0.16)}px`, background: "#4ade80", borderRadius: "2px", transition: "height 0.1s" }} />
+                  <div style={{ width: "4px", height: `${Math.max(4, audioLevel * 0.16 * 1.2)}px`, background: "#4ade80", borderRadius: "2px", transition: "height 0.1s" }} />
+                  <div style={{ width: "4px", height: `${Math.max(4, audioLevel * 0.16 * 0.8)}px`, background: "#4ade80", borderRadius: "2px", transition: "height 0.1s" }} />
+                </div>
+
                 <button
                   type="button"
                   onClick={pauseRecording}
@@ -595,6 +665,13 @@ export default function ComplaintStep({
 
         </div>
 
+        {/* Status bar */}
+        {speechStatus && (
+          <div style={{ marginTop: "6px", fontSize: "11px", opacity: 0.9, fontWeight: 600 }}>
+            {speechStatus}
+          </div>
+        )}
+
         {/* Interactive Audio Player Bar for Real Playback */}
         {audioUrl && (
           <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -606,7 +683,7 @@ export default function ComplaintStep({
               controls
               style={{
                 width: "100%",
-                height: "36px",
+                height: "38px",
                 borderRadius: "10px",
                 outline: "none"
               }}
