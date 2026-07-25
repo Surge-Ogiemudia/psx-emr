@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import AllergyBanner from "./AllergyBanner";
 import { parseJson } from "@/lib/types";
 import type { Allergy } from "@/lib/types";
-import { transcribeAudio } from "@/lib/ai/client";
 
 interface AttachedFileItem {
   id: string;
@@ -44,9 +43,7 @@ export default function ComplaintStep({
   const [voiceTranscript, setVoiceTranscript] = useState(initialComplaint?.voiceTranscript || "");
   const [audioUrl, setAudioUrl] = useState<string | null>(initialComplaint?.audioUrl || null);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [speechStatus, setSpeechStatus] = useState("");
-  const [isDictating, setIsDictating] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
 
   // Pharmacist Notes State
   const [textInput, setTextInput] = useState(initialComplaint?.textInput || "");
@@ -84,12 +81,10 @@ export default function ComplaintStep({
   const [reviewTextInput, setReviewTextInput] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Refs for Audio, AudioContext Visualizer, Speech Recognition, & Timers
+  // Refs for Audio, AudioContext Visualizer, & Timers
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const lastAudioBlobRef = useRef<Blob | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const dictationRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -100,16 +95,13 @@ export default function ComplaintStep({
     recorderStatusRef.current = recorderStatus;
   }, [recorderStatus]);
 
-  // Clean up timers, audio contexts & speech recognition on unmount
+  // Clean up timers & audio contexts on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (audioContextRef.current) {
         try { audioContextRef.current.close(); } catch (e) {}
-      }
-      if (dictationRef.current) {
-        try { dictationRef.current.stop(); } catch (e) {}
       }
     };
   }, []);
@@ -118,7 +110,7 @@ export default function ComplaintStep({
   function startRecording() {
     setRecorderStatus("recording");
     setRecordingSeconds(0);
-    setSpeechStatus("Requesting mic access...");
+    setStatusMessage("Recording patient audio...");
     audioChunksRef.current = [];
 
     // Start Recording Timer
@@ -139,13 +131,11 @@ export default function ComplaintStep({
       }
     }
 
-    // Initialize MediaRecorder for microphone audio recording
+    // Initialize MediaRecorder & Web Audio API Visualizer
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       navigator.mediaDevices
         .getUserMedia({ audio: true })
         .then((stream) => {
-          setSpeechStatus("🎙️ Recording patient audio...");
-
           // Web Audio API volume visualizer
           try {
             const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -191,94 +181,35 @@ export default function ComplaintStep({
             }
           };
 
-          // STOP HANDLER: Create playable audio Blob AND THEN stop mic stream tracks
-          mediaRecorder.onstop = async () => {
+          // STOP HANDLER: Create audio blob URL & cleanup mic tracks
+          mediaRecorder.onstop = () => {
             const actualMime = mediaRecorder.mimeType || selectedMimeType || "audio/webm";
             const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
-            lastAudioBlobRef.current = audioBlob;
             const url = URL.createObjectURL(audioBlob);
             setAudioUrl(url);
 
-            // Clean up microphone stream tracks AFTER creating blob URL
+            // Stop mic stream tracks after blob creation
             stream.getTracks().forEach((t) => t.stop());
             setAudioLevel(0);
 
-            setSpeechStatus("✓ Voice recording saved. Play back below or use Dictate Speech.");
+            setStatusMessage("✓ Voice recording saved. Play back audio below.");
           };
 
           mediaRecorder.start(200);
         })
         .catch((err) => {
           console.error("Microphone permission error or unsupported:", err);
-          setSpeechStatus("❌ Mic access denied. Please check microphone permissions.");
+          setStatusMessage("❌ Mic access denied. Please check microphone permissions.");
         });
     } else {
-      setSpeechStatus("❌ Microphone not supported in this browser.");
-    }
-  }
-
-  // TOGGLE LIVE SPEECH DICTATION (INDEPENDENT SPEECH TO TEXT)
-  function toggleSpeechDictation() {
-    if (isDictating) {
-      if (dictationRef.current) {
-        try { dictationRef.current.stop(); } catch (e) {}
-      }
-      setIsDictating(false);
-      setSpeechStatus("✓ Dictation stopped.");
-      return;
-    }
-
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      alert("Browser Speech Recognition is not supported on this browser. You can type directly into the notes box!");
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.lang = navigator.language || "en-US";
-      recognition.continuous = true;
-      recognition.interimResults = true;
-
-      recognition.onstart = () => {
-        setIsDictating(true);
-        setSpeechStatus("🔴 Live Dictation Active - speak clearly into your mic...");
-      };
-
-      recognition.onresult = (event: any) => {
-        let currentTranscript = "";
-        for (let i = 0; i < event.results.length; i++) {
-          currentTranscript += event.results[i][0].transcript + " ";
-        }
-        if (currentTranscript.trim()) {
-          setVoiceTranscript(currentTranscript.trim());
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        console.warn("Dictation error:", event.error);
-        setIsDictating(false);
-        setSpeechStatus(`⚠️ Dictation status: ${event.error}. You can type directly into the box.`);
-      };
-
-      recognition.onend = () => {
-        setIsDictating(false);
-      };
-
-      recognition.start();
-      dictationRef.current = recognition;
-    } catch (e) {
-      console.warn("Dictation init error:", e);
-      alert("Could not initialize Speech Dictation. Please type directly into the box.");
+      setStatusMessage("❌ Microphone not supported in this browser.");
     }
   }
 
   // PAUSE RECORDING
   function pauseRecording() {
     setRecorderStatus("paused");
-    setSpeechStatus("⏸️ Recording paused.");
+    setStatusMessage("⏸️ Recording paused.");
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -291,7 +222,7 @@ export default function ComplaintStep({
   // RESUME RECORDING
   function resumeRecording() {
     setRecorderStatus("recording");
-    setSpeechStatus("🎙️ Resumed recording...");
+    setStatusMessage("🔴 Recording resumed...");
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setRecordingSeconds((prev) => prev + 1);
@@ -305,7 +236,6 @@ export default function ComplaintStep({
   // STOP RECORDING
   function stopRecording() {
     setRecorderStatus("stopped");
-    setSpeechStatus("⏳ Finalizing audio recording...");
 
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -324,8 +254,7 @@ export default function ComplaintStep({
     setVoiceTranscript("");
     setRecorderStatus("idle");
     setRecordingSeconds(0);
-    setSpeechStatus("");
-    lastAudioBlobRef.current = null;
+    setStatusMessage("");
   }
 
   // Handle File Selections
@@ -414,7 +343,8 @@ export default function ComplaintStep({
   const hasAnyContent =
     textInput.trim().length > 0 ||
     voiceTranscript.trim().length > 0 ||
-    attachments.length > 0;
+    attachments.length > 0 ||
+    Boolean(audioUrl);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -438,7 +368,7 @@ export default function ComplaintStep({
         onChange={handleFileSelect}
       />
 
-      {/* 1. AMBIENT VOICE RECORDER BAR & STANDARD CONTROLS */}
+      {/* 1. VOICE AUDIO RECORDER CARD */}
       <div
         style={{
           background:
@@ -462,7 +392,7 @@ export default function ComplaintStep({
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
           
-          {/* Dynamic Recorder Buttons */}
+          {/* Dynamic Recorder Controls */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
             
             {/* IDLE STATE: Start Button */}
@@ -647,42 +577,20 @@ export default function ComplaintStep({
 
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <button
-              type="button"
-              onClick={toggleSpeechDictation}
-              style={{
-                padding: "6px 12px",
-                borderRadius: "20px",
-                background: isDictating ? "#ef4444" : "#0f766e",
-                color: "#ffffff",
-                fontWeight: 800,
-                fontSize: "12px",
-                cursor: "pointer",
-                border: "none",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px"
-              }}
-            >
-              <span>{isDictating ? "🔴 Stop Dictation" : "🎙️ Dictate Speech"}</span>
-            </button>
-          </div>
-
         </div>
 
-        {/* Status bar */}
-        {speechStatus && (
+        {/* Status Bar */}
+        {statusMessage && (
           <div style={{ marginTop: "6px", fontSize: "11px", opacity: 0.9, fontWeight: 600 }}>
-            {speechStatus}
+            {statusMessage}
           </div>
         )}
 
-        {/* Interactive Audio Player Bar for Real Playback */}
+        {/* Interactive Audio Player Bar for Voice Playback */}
         {audioUrl && (
           <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "4px" }}>
             <span style={{ fontSize: "11px", fontWeight: 800, color: recorderStatus === "recording" || recorderStatus === "paused" ? "rgba(255,255,255,0.9)" : "#0f766e", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              🔊 Recorded Voice Playback:
+              🔊 RECORDED VOICE PLAYBACK:
             </span>
             <audio
               src={audioUrl}
@@ -696,48 +604,6 @@ export default function ComplaintStep({
             />
           </div>
         )}
-
-        {/* Always Visible Transcript & Dictation Box */}
-        <div
-          style={{
-            marginTop: "14px",
-            paddingTop: "14px",
-            borderTop: recorderStatus === "recording" || recorderStatus === "paused" ? "1px solid rgba(255,255,255,0.2)" : "1px solid #e4e4e7",
-            display: "flex",
-            flexDirection: "column",
-            gap: "10px"
-          }}
-        >
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-              <span style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.8 }}>
-                Transcribed Audio Text (Edit or dictation notes):
-              </span>
-              {isDictating && (
-                <span style={{ fontSize: "11px", fontWeight: 700, color: "#ef4444" }}>
-                  🔴 Dictation Active - Listening...
-                </span>
-              )}
-            </div>
-            <textarea
-              style={{
-                width: "100%",
-                minHeight: "90px",
-                fontSize: "14px",
-                lineHeight: 1.6,
-                background: recorderStatus === "recording" || recorderStatus === "paused" ? "rgba(0,0,0,0.15)" : "#f8fafc",
-                color: recorderStatus === "recording" || recorderStatus === "paused" ? "#ffffff" : "#1e293b",
-                padding: "12px",
-                borderRadius: "12px",
-                border: recorderStatus === "recording" || recorderStatus === "paused" ? "none" : "1px solid #cbd5e1",
-                outline: "none"
-              }}
-              value={voiceTranscript}
-              onChange={(e) => setVoiceTranscript(e.target.value)}
-              placeholder="Click '🎙️ Dictate Speech' to speak directly into this box, or type transcript notes..."
-            />
-          </div>
-        </div>
       </div>
 
       {/* 2. PRIMARY PHARMACIST TYPING CANVAS */}
@@ -755,7 +621,7 @@ export default function ComplaintStep({
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <label style={{ fontSize: "12px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#0f766e" }}>
-            ✏️ Pharmacist Notes & Observations
+            ✏️ PHARMACIST NOTES & OBSERVATIONS
           </label>
         </div>
 
@@ -999,29 +865,31 @@ export default function ComplaintStep({
               </button>
             </div>
 
-            {/* Audio & Live Transcript Review */}
+            {/* Audio & Transcript Review */}
             {(audioUrl || reviewVoiceTranscript) && (
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 <label style={{ fontSize: "12px", fontWeight: 800, textTransform: "uppercase", color: "#71717a" }}>
-                  🎙️ Recorded Patient Audio & Transcript
+                  🎙️ Recorded Patient Audio
                 </label>
                 {audioUrl && (
                   <audio controls src={audioUrl} style={{ width: "100%", marginBottom: "6px" }} />
                 )}
-                <textarea
-                  style={{
-                    width: "100%",
-                    minHeight: "80px",
-                    padding: "10px 12px",
-                    borderRadius: "12px",
-                    border: "1px solid #e4e4e7",
-                    fontSize: "13px",
-                    lineHeight: 1.5,
-                    color: "#18181b"
-                  }}
-                  value={reviewVoiceTranscript}
-                  onChange={(e) => setReviewVoiceTranscript(e.target.value)}
-                />
+                {reviewVoiceTranscript && (
+                  <textarea
+                    style={{
+                      width: "100%",
+                      minHeight: "80px",
+                      padding: "10px 12px",
+                      borderRadius: "12px",
+                      border: "1px solid #e4e4e7",
+                      fontSize: "13px",
+                      lineHeight: 1.5,
+                      color: "#18181b"
+                    }}
+                    value={reviewVoiceTranscript}
+                    onChange={(e) => setReviewVoiceTranscript(e.target.value)}
+                  />
+                )}
               </div>
             )}
 
