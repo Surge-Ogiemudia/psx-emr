@@ -162,10 +162,19 @@ export default function HpcStep({
       }
 
       await fetch(`/api/encounters/${encounterId}/hpc`, {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           hpcs: state.map((s) => ({
+            complaintSegment: s.segment.label,
+            questionsGenerated: s.questions,
+            answersGiven: Object.entries(s.answers).map(([question, answer]) => ({
+              question,
+              answer,
+            })),
+            freeTextAdditions: s.freeText || undefined,
+          })),
+          segments: state.map((s) => ({
             complaintSegment: s.segment.label,
             questionsGenerated: s.questions,
             answersGiven: Object.entries(s.answers).map(([question, answer]) => ({

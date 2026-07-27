@@ -186,6 +186,26 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
           </button>
         </div>
         <div style={{ background: "#ffffff", borderRadius: 16, border: "1px solid #e4e4e7", overflow: "hidden" }}>
+          {/* Global HPC Audio Recording & Transcript */}
+          {(encounter.hpcAudioUrl || encounter.hpcVoiceTranscript) && (
+            <div style={{ padding: 20, borderBottom: "1px solid #e4e4e7", background: "#f8fafc" }}>
+              {encounter.hpcAudioUrl && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 6 }}>HPC Audio Recording</div>
+                  <audio controls src={encounter.hpcAudioUrl} style={{ width: "100%", height: 40 }} />
+                </div>
+              )}
+              {encounter.hpcVoiceTranscript && (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>Voice Transcript</div>
+                  <div style={{ fontSize: 14, color: "#18181b", fontStyle: "italic", background: "#ffffff", padding: 10, borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                    "{encounter.hpcVoiceTranscript}"
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {!hpcs || hpcs.length === 0 ? (
             <div style={{ padding: 20, fontSize: 15, color: "#71717a" }}>Nil</div>
           ) : (
