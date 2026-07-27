@@ -49,10 +49,8 @@ export async function POST(req: NextRequest) {
     };
   }).filter(c => c.embedding.length > 0);
 
-  // We set a similarity threshold (e.g. 0.85). Tiny Face Detector descriptors have
-  // different characteristics than full model descriptors, but cosine similarity
-  // above 0.80 - 0.85 is typically a good match.
-  const matches = findTopMatches(body.embedding, candidates, 3, 0.82);
+  // High-accuracy strict threshold (0.90) to eliminate false-positive face matches
+  const matches = findTopMatches(body.embedding, candidates, 3, 0.90);
 
   return NextResponse.json({ matches });
 }

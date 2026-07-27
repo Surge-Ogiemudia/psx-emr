@@ -100,7 +100,7 @@ export default function AssessmentStep({
       {suggestion && !suggestionError && (
         <div style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderRadius: "16px", border: "1px solid #e9d5ff", padding: "20px", marginBottom: "24px", boxShadow: "0 4px 20px -6px rgba(147, 51, 234, 0.15)" }}>
           <div style={{ fontSize: "12px", fontWeight: 800, color: "#9333ea", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-            <span>✦</span> Gemma suggestion
+            <span>✦</span> Suggested Clinical Impression
           </div>
           <div style={{ fontSize: "15px", color: "#4c1d95", lineHeight: 1.6, marginBottom: "16px" }}>{suggestion}</div>
           <div style={{ display: "flex", gap: "8px" }}>

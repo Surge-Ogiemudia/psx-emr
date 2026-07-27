@@ -60,7 +60,7 @@ export default function ResumeStep({
         ) : summarizing ? (
           <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "16px", background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderRadius: "12px", color: "#7e22ce", border: "1px solid #e9d5ff" }}>
             <div className="ai-dot" />
-            <span style={{ fontSize: "13px", fontWeight: 600 }}>Gemma is reading the uploaded result…</span>
+            <span style={{ fontSize: "13px", fontWeight: 600 }}>Reading uploaded result…</span>
           </div>
         ) : (
           <textarea

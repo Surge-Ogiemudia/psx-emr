@@ -87,31 +87,28 @@ export default function TreatStep({ encounterId }: { encounterId: string }) {
         />
       </div>
 
-      <div style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderRadius: "16px", border: "1px solid #e9d5ff", padding: "20px", marginBottom: "24px", boxShadow: "0 4px 20px -6px rgba(147, 51, 234, 0.15)" }}>
-        <div style={{ fontSize: "12px", fontWeight: 800, color: "#9333ea", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-          <span>✦</span> Counselling notes (Gemma draft)
+      {(draftingNotes || (counselling && !counsellingError)) && (
+        <div style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderRadius: "16px", border: "1px solid #e9d5ff", padding: "20px", marginBottom: "24px", boxShadow: "0 4px 20px -6px rgba(147, 51, 234, 0.15)" }}>
+          <div style={{ fontSize: "12px", fontWeight: 800, color: "#9333ea", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+            <span>✦</span> Patient Counselling Notes
+          </div>
+          {draftingNotes ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "16px", background: "#ffffff", borderRadius: "12px", color: "#7e22ce" }}>
+              <div className="ai-dot" />
+              <span style={{ fontSize: "13px", fontWeight: 600 }}>Structuring counselling notes…</span>
+            </div>
+          ) : (
+            <textarea
+              style={{ width: "100%", minHeight: "120px", padding: "16px", borderRadius: "12px", border: "1px solid #d8b4fe", background: "#ffffff", fontSize: "14px", lineHeight: 1.5, color: "#4c1d95", outline: "none", resize: "vertical", transition: "border-color 0.2s" }}
+              onFocus={(e) => { e.target.style.borderColor = "#a855f7"; e.target.style.boxShadow = "0 0 0 3px rgba(168, 85, 247, 0.1)"; }}
+              onBlur={(e) => { e.target.style.borderColor = "#d8b4fe"; e.target.style.boxShadow = "none"; }}
+              placeholder="Counselling notes appear here once medicines are added — edit freely."
+              value={counselling}
+              onChange={(e) => setCounselling(e.target.value)}
+            />
+          )}
         </div>
-        {counsellingError && (
-          <div style={{ background: "#fef2f2", borderRadius: "12px", border: "1px solid #fecaca", padding: "16px", marginBottom: "16px", color: "#dc2626", fontSize: "14px", fontWeight: 600 }}>
-            ⚠️ {counsellingError}
-          </div>
-        )}
-        {draftingNotes ? (
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "16px", background: "#ffffff", borderRadius: "12px", color: "#7e22ce" }}>
-            <div className="ai-dot" />
-            <span style={{ fontSize: "13px", fontWeight: 600 }}>Drafting counselling notes…</span>
-          </div>
-        ) : (!counsellingError && (
-          <textarea
-            style={{ width: "100%", minHeight: "120px", padding: "16px", borderRadius: "12px", border: "1px solid #d8b4fe", background: "#ffffff", fontSize: "14px", lineHeight: 1.5, color: "#4c1d95", outline: "none", resize: "vertical", transition: "border-color 0.2s" }}
-            onFocus={(e) => { e.target.style.borderColor = "#a855f7"; e.target.style.boxShadow = "0 0 0 3px rgba(168, 85, 247, 0.1)"; }}
-            onBlur={(e) => { e.target.style.borderColor = "#d8b4fe"; e.target.style.boxShadow = "none"; }}
-            placeholder="Counselling notes appear here once medicines are added — edit freely."
-            value={counselling}
-            onChange={(e) => setCounselling(e.target.value)}
-          />
-        ))}
-      </div>
+      )}
 
       <button style={{
         width: "100%", padding: "16px", borderRadius: "16px", border: "none",

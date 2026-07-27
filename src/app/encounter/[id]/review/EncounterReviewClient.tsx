@@ -4,6 +4,7 @@ import { useState } from "react";
 import { formatDateTime } from "@/lib/format";
 import { parseJson } from "@/lib/types";
 import type { ComplaintSegment, HpcAnswer, RosAnswerEntry, DispensedMedicine, ReferralDetails } from "@/lib/types";
+import ShareEncounterModal from "@/components/patient/ShareEncounterModal";
 
 export default function EncounterReviewClient({ initialEncounter }: { initialEncounter: any }) {
   const [encounter, setEncounter] = useState(initialEncounter);
@@ -43,6 +44,17 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
     setIsSubmittingAddendum(false);
   }
 
+  function quickAddendumToSection(sectionTitle: string) {
+    setNewAddendum((prev) => {
+      const prefix = `[Section: ${sectionTitle}] `;
+      return prev.startsWith(prefix) ? prev : `${prefix}${prev}`;
+    });
+    const el = document.getElementById("addendum-section");
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  }
+
+  const [showShareModal, setShowShareModal] = useState(false);
+
   return (
     <div className="screen-content" style={{ paddingBottom: 120 }}>
       {/* Document Header */}
@@ -57,6 +69,49 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
             <div style={{ fontSize: 13, color: "#71717a" }}>Attending: {staff?.fullName || "Nil"}</div>
             <div style={{ fontSize: 13, color: "#71717a" }}>Status: {encounter.exitType?.toUpperCase() || "PENDING"}</div>
           </div>
+        </div>
+
+        {/* Action Buttons: PDF & Share */}
+        <div style={{ display: "flex", gap: "12px", marginBottom: "20px" }}>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            style={{
+              padding: "10px 16px",
+              borderRadius: "8px",
+              border: "1px solid #d4d4d8",
+              background: "#ffffff",
+              color: "#18181b",
+              fontWeight: 700,
+              fontSize: "13px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            📄 Download PDF / Print
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowShareModal(true)}
+            style={{
+              padding: "10px 16px",
+              borderRadius: "8px",
+              border: "none",
+              background: "#0F6E56",
+              color: "white",
+              fontWeight: 700,
+              fontSize: "13px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              boxShadow: "0 2px 8px rgba(15, 110, 86, 0.2)",
+            }}
+          >
+            📤 Share Record with Patient
+          </button>
         </div>
 
         <div style={{ display: "flex", gap: 32 }}>
@@ -77,9 +132,14 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
 
       {/* 1. Complaint */}
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-          1. Chief Complaint
-        </h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+            1. Chief Complaint
+          </h2>
+          <button type="button" onClick={() => quickAddendumToSection("Chief Complaint")} style={{ background: "#E6F4F1", border: "none", color: "#0F6E56", padding: "4px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            + Section Addendum
+          </button>
+        </div>
         <div style={{ background: "#ffffff", borderRadius: 16, padding: 20, border: "1px solid #e4e4e7" }}>
           {!complaint ? (
             <div style={{ fontSize: 15, color: "#71717a" }}>Nil</div>
@@ -101,7 +161,7 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
                 <div style={{ fontSize: 15, color: complaint.textInput ? "#18181b" : "#71717a", lineHeight: 1.6 }}>{complaint.textInput || "Nil"}</div>
               </div>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>AI Summary</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>Complaint Summary</div>
                 {complaint.gemmaSummary ? (
                   <div style={{ fontSize: 15, color: "#18181b", lineHeight: 1.6, background: "#f8fafc", padding: 12, borderRadius: 8, borderLeft: "4px solid #3b82f6" }}>
                     {complaint.gemmaSummary}
@@ -117,9 +177,14 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
 
       {/* 2. HPC */}
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-          2. History of Presenting Complaint
-        </h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+            2. History of Presenting Complaint
+          </h2>
+          <button type="button" onClick={() => quickAddendumToSection("HPC")} style={{ background: "#E6F4F1", border: "none", color: "#0F6E56", padding: "4px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            + Section Addendum
+          </button>
+        </div>
         <div style={{ background: "#ffffff", borderRadius: 16, border: "1px solid #e4e4e7", overflow: "hidden" }}>
           {!hpcs || hpcs.length === 0 ? (
             <div style={{ padding: 20, fontSize: 15, color: "#71717a" }}>Nil</div>
@@ -156,9 +221,14 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
 
       {/* 3. History & Vitals */}
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-          3. Vitals & Medical History
-        </h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+            3. Vitals & Medical History
+          </h2>
+          <button type="button" onClick={() => quickAddendumToSection("Vitals & History")} style={{ background: "#E6F4F1", border: "none", color: "#0F6E56", padding: "4px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            + Section Addendum
+          </button>
+        </div>
         <div style={{ background: "#ffffff", borderRadius: 16, padding: 20, border: "1px solid #e4e4e7" }}>
           {!historySnapshot ? (
             <div style={{ fontSize: 15, color: "#71717a" }}>Nil</div>
@@ -205,9 +275,14 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
 
       {/* 4. ROS */}
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-          4. Review of Systems
-        </h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+            4. Review of Systems
+          </h2>
+          <button type="button" onClick={() => quickAddendumToSection("ROS")} style={{ background: "#E6F4F1", border: "none", color: "#0F6E56", padding: "4px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            + Section Addendum
+          </button>
+        </div>
         <div style={{ background: "#ffffff", borderRadius: 16, padding: 20, border: "1px solid #e4e4e7" }}>
           {!ros || parseJson<RosAnswerEntry[]>(ros.answersGiven, []).length === 0 ? (
             <div style={{ fontSize: 15, color: "#71717a" }}>Nil</div>
@@ -232,9 +307,14 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
 
       {/* 5. Assessment */}
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-          5. Assessment
-        </h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+            5. Assessment
+          </h2>
+          <button type="button" onClick={() => quickAddendumToSection("Assessment")} style={{ background: "#E6F4F1", border: "none", color: "#0F6E56", padding: "4px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            + Section Addendum
+          </button>
+        </div>
         <div style={{ background: "#ffffff", borderRadius: 16, padding: 20, border: "1px solid #e4e4e7" }}>
           {!assessment ? (
             <div style={{ fontSize: 15, color: "#71717a" }}>Nil</div>
@@ -244,7 +324,7 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
               <div style={{ fontSize: 15, color: assessment.pharmacistImpression ? "#18181b" : "#a1a1aa", lineHeight: 1.6, whiteSpace: "pre-wrap", marginBottom: 16 }}>
                 {assessment.pharmacistImpression || "Nil"}
               </div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>AI Suggestion</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#52525b", marginBottom: 4 }}>Suggested Impression</div>
               <div style={{ fontSize: 15, color: assessment.gemmaSuggestion ? "#18181b" : "#a1a1aa", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
                 {assessment.gemmaSuggestion || "Nil"}
               </div>
@@ -255,9 +335,14 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
 
       {/* 6. Management Plan */}
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-          6. Management Plan
-        </h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+            6. Management Plan
+          </h2>
+          <button type="button" onClick={() => quickAddendumToSection("Management Plan")} style={{ background: "#E6F4F1", border: "none", color: "#0F6E56", padding: "4px 10px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            + Section Addendum
+          </button>
+        </div>
         <div style={{ background: "#ffffff", borderRadius: 16, border: "1px solid #e4e4e7", overflow: "hidden" }}>
           {!managementPlan ? (
             <div style={{ padding: 20, fontSize: 15, color: "#71717a" }}>Nil</div>
@@ -362,7 +447,7 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
       </div>
 
       {/* 7. Addendums */}
-      <div style={{ marginBottom: 24 }}>
+      <div id="addendum-section" style={{ marginBottom: 24 }}>
         <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F6E56", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
           Addendums
         </h2>
@@ -400,6 +485,14 @@ export default function EncounterReviewClient({ initialEncounter }: { initialEnc
           </div>
         </div>
       </div>
+
+      <ShareEncounterModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        encounterId={encounter.id}
+        patientName={patient?.fullName}
+        patientPhone={patient?.phoneNumber}
+      />
     </div>
   );
 }

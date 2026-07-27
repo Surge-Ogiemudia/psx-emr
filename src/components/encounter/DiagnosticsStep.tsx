@@ -3,65 +3,169 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+const COMMON_DIAGNOSTICS = [
+  "Malaria RDT",
+  "Full Blood Count (FBC/CBC)",
+  "Widal Test (Typhoid)",
+  "Urinalysis & Microscopy",
+  "Fasting Blood Glucose",
+  "Lipid Profile",
+  "Liver Function Test (LFT)",
+  "Renal Function Test / Electrolytes",
+  "Stool Microscopy & Culture",
+  "Chest X-Ray",
+  "Abdominal Ultrasound",
+  "Electrocardiogram (ECG)"
+];
+
 export default function DiagnosticsStep({
   encounterId,
-  tests,
+  tests: initialTests,
 }: {
   encounterId: string;
   tests: string[];
 }) {
   const router = useRouter();
+  const [selectedTests, setSelectedTests] = useState<string[]>(initialTests || []);
+  const [customTestInput, setCustomTestInput] = useState("");
   const [patientReturning, setPatientReturning] = useState<boolean | null>(null);
   const [interimTreatment, setInterimTreatment] = useState(false);
   const [closing, setClosing] = useState(false);
 
-  async function closeEncounter() {
+  function toggleTest(test: string) {
+    if (selectedTests.includes(test)) {
+      setSelectedTests(selectedTests.filter((t) => t !== test));
+    } else {
+      setSelectedTests([...selectedTests, test]);
+    }
+  }
+
+  function addCustomTest() {
+    if (!customTestInput.trim()) return;
+    const val = customTestInput.trim();
+    if (!selectedTests.includes(val)) {
+      setSelectedTests([...selectedTests, val]);
+    }
+    setCustomTestInput("");
+  }
+
+  async function handleProceed() {
     setClosing(true);
 
     const payload = {
       exitType: "diagnostic",
-      diagnosticsRecommended: tests,
+      diagnosticsRecommended: selectedTests,
       patientReturning,
       interimTreatment,
     };
 
-    const res = await fetch(`/api/encounters/${encounterId}/management-plan`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    try {
+      await fetch(`/api/encounters/${encounterId}/management-plan`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-    router.push(`/encounter/${encounterId}/done`);
+      if (interimTreatment) {
+        router.push(`/encounter/${encounterId}/management/treat?interim=true`);
+      } else {
+        router.push(`/encounter/${encounterId}/done`);
+      }
+    } catch (e) {
+      console.error(e);
+      setClosing(false);
+    }
   }
 
   return (
     <>
       <div style={{ background: "#ffffff", borderRadius: "16px", border: "1px solid #e4e4e7", padding: "20px", marginBottom: "16px", boxShadow: "0 4px 20px -6px rgba(0,0,0,0.05)" }}>
         <div style={{ fontSize: "14px", fontWeight: 700, color: "#18181b", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
-          <span>🧪</span> Recommended Tests
+          <span>🧪</span> Recommended Diagnostics & Laboratory Tests
         </div>
-        {tests.length === 0 ? (
-          <p style={{ fontSize: "13px", color: "#71717a", fontStyle: "italic", textAlign: "center", padding: "12px" }}>No diagnostics requested.</p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {tests.map((t, i) => (
-              <div
-                key={i}
-                style={{
-                  padding: "12px 16px",
-                  background: "linear-gradient(to right, #f8fafc, #f1f5f9)",
-                  borderLeft: "3px solid #0ea5e9",
-                  borderRadius: "8px",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  color: "#0f172a"
-                }}
-              >
-                {t}
-              </div>
-            ))}
+        <p style={{ fontSize: "12px", color: "#71717a", marginTop: 0, marginBottom: "16px" }}>
+          Select common tests below or type a custom diagnostic order:
+        </p>
+
+        {/* Selected Chips */}
+        {selectedTests.length > 0 && (
+          <div style={{ marginBottom: "16px" }}>
+            <div style={{ fontSize: "11px", fontWeight: 800, color: "#0ea5e9", textTransform: "uppercase", marginBottom: "8px" }}>Selected Orders ({selectedTests.length}):</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {selectedTests.map((t, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    background: "#0ea5e9",
+                    color: "white",
+                    padding: "6px 12px",
+                    borderRadius: "20px",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <span>{t}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleTest(t)}
+                    style={{ background: "none", border: "none", color: "white", fontWeight: 800, cursor: "pointer", padding: 0 }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
+
+        {/* Custom Test Input */}
+        <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+          <input
+            type="text"
+            value={customTestInput}
+            onChange={(e) => setCustomTestInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomTest(); } }}
+            placeholder="Type custom test name (e.g. Typhoid Antigen Test)..."
+            style={{ flex: 1, padding: "10px 14px", borderRadius: "8px", border: "1px solid #d4d4d8", fontSize: "14px" }}
+          />
+          <button
+            type="button"
+            onClick={addCustomTest}
+            style={{ background: "#0ea5e9", color: "white", padding: "10px 16px", borderRadius: "8px", fontWeight: 700, border: "none", cursor: "pointer" }}
+          >
+            + Add
+          </button>
+        </div>
+
+        {/* Quick Common Test Chips */}
+        <div style={{ fontSize: "11px", fontWeight: 800, color: "#71717a", textTransform: "uppercase", marginBottom: "8px" }}>Quick Select Common Tests:</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+          {COMMON_DIAGNOSTICS.map((test) => {
+            const isSelected = selectedTests.includes(test);
+            return (
+              <button
+                key={test}
+                type="button"
+                onClick={() => toggleTest(test)}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: "8px",
+                  border: isSelected ? "1.5px solid #0ea5e9" : "1px solid #e4e4e7",
+                  background: isSelected ? "#f0f9ff" : "#f8fafc",
+                  color: isSelected ? "#0284c7" : "#334155",
+                  fontWeight: isSelected ? 700 : 500,
+                  fontSize: "13px",
+                  cursor: "pointer",
+                }}
+              >
+                {isSelected ? "✓ " : "+ "}{test}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div style={{ background: "#ffffff", borderRadius: "16px", border: "1px solid #e4e4e7", padding: "20px", marginBottom: "16px", boxShadow: "0 4px 20px -6px rgba(0,0,0,0.05)" }}>
@@ -129,22 +233,18 @@ export default function DiagnosticsStep({
       <button
         style={{
           width: "100%", padding: "16px", borderRadius: "16px", border: "none",
-          background: patientReturning !== null ? "linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%)" : "#e4e4e7",
-          color: patientReturning !== null ? "white" : "#a1a1aa", fontSize: "15px", fontWeight: 700,
-          cursor: patientReturning !== null ? "pointer" : "not-allowed", boxShadow: patientReturning !== null ? "0 8px 24px -4px rgba(79, 70, 229, 0.4)" : "none",
+          background: (patientReturning !== null && selectedTests.length > 0) ? "linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%)" : "#e4e4e7",
+          color: (patientReturning !== null && selectedTests.length > 0) ? "white" : "#a1a1aa", fontSize: "15px", fontWeight: 700,
+          cursor: (patientReturning !== null && selectedTests.length > 0) ? "pointer" : "not-allowed", boxShadow: (patientReturning !== null && selectedTests.length > 0) ? "0 8px 24px -4px rgba(79, 70, 229, 0.4)" : "none",
           transition: "all 0.2s", opacity: closing ? 0.7 : 1
         }}
-        disabled={patientReturning === null || closing}
-        onClick={
-          interimTreatment
-            ? () => router.push(`/encounter/${encounterId}/treat?interim=true`)
-            : closeEncounter
-        }
+        disabled={patientReturning === null || selectedTests.length === 0 || closing}
+        onClick={handleProceed}
       >
-        {interimTreatment
-          ? "Proceed to prescribe"
-          : closing
-          ? "Ending session…"
+        {closing
+          ? "Saving..."
+          : interimTreatment
+          ? "Proceed to prescribe →"
           : "End Session, Finish"}
       </button>
     </>

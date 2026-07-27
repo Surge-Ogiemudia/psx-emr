@@ -106,7 +106,7 @@ export default function ReferStep({ encounterId, clinicalContext }: { encounterI
       <div style={{ background: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", borderRadius: "16px", border: "1px solid #e9d5ff", padding: "20px", marginBottom: "24px", boxShadow: "0 4px 20px -6px rgba(147, 51, 234, 0.15)" }}>
         <div style={{ fontSize: "12px", fontWeight: 800, color: "#9333ea", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <span>✦</span> Referral Letter (Gemma draft)
+            <span>✦</span> Referral Letter
           </div>
           <button 
             onClick={handleDraftLetter}

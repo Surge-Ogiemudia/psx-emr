@@ -12,6 +12,7 @@ export interface PatientIdentity {
   dateOfBirth: string | null;
   gender: string | null;
   address: string | null;
+  photoUrl?: string | null;
   knownAllergies: string;
   chronicConditions: string;
   currentMedications: string;
@@ -38,6 +39,7 @@ export default function LockedIdentity({ patient, locked = false }: { patient: P
     phoneNumber: patient.phoneNumber,
     gender: patient.gender ?? "",
     address: patient.address ?? "",
+    photoUrl: patient.photoUrl ?? "",
   });
 
   const allergies = parseJson<Allergy[]>(current.knownAllergies, []);
@@ -73,20 +75,41 @@ export default function LockedIdentity({ patient, locked = false }: { patient: P
   return (
     <div style={{ background: "#ffffff", borderRadius: "20px", border: "1px solid #e4e4e7", padding: "20px", boxShadow: "0 8px 32px -8px rgba(0,0,0,0.06)", marginBottom: "24px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "20px" }}>
-        <div style={{
-          width: "56px", height: "56px", borderRadius: "16px", flexShrink: 0,
-          background: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: "20px", fontWeight: 800, color: "white", boxShadow: "0 4px 14px rgba(236, 72, 153, 0.3)"
-        }}>
-          {getInitials(current.fullName)}
+        
+        {/* Patient Photo Avatar (captured face or initials fallback) */}
+        <div style={{ position: "relative" }}>
+          {current.photoUrl ? (
+            <img
+              src={current.photoUrl}
+              alt={current.fullName}
+              style={{
+                width: "60px",
+                height: "60px",
+                borderRadius: "16px",
+                objectFit: "cover",
+                border: "2px solid #0F6E56",
+                boxShadow: "0 4px 14px rgba(15, 110, 86, 0.2)",
+              }}
+            />
+          ) : (
+            <div style={{
+              width: "60px", height: "60px", borderRadius: "16px", flexShrink: 0,
+              background: "linear-gradient(135deg, #0F6E56 0%, #0d9488 100%)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "20px", fontWeight: 800, color: "white", boxShadow: "0 4px 14px rgba(15, 110, 86, 0.2)"
+            }}>
+              {getInitials(current.fullName)}
+            </div>
+          )}
         </div>
+
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: "20px", fontWeight: 800, color: "#18181b", letterSpacing: "-0.5px" }}>{current.fullName}</div>
           <div style={{ fontSize: "13px", color: "#71717a", marginTop: "2px", fontWeight: 500 }}>
             {current.gender ?? "—"} {age ? `· ${age}` : ""} · {current.phoneNumber}
           </div>
         </div>
+
         {locked ? (
           <span style={{ background: "#f3f4f6", color: "#71717a", padding: "6px 12px", borderRadius: "12px", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", gap: "4px" }}>
             🔒 Locked
@@ -96,7 +119,7 @@ export default function LockedIdentity({ patient, locked = false }: { patient: P
             background: editing ? "#fee2e2" : "#f0fdfa", color: editing ? "#b91c1c" : "#0f766e", 
             border: "none", padding: "8px 16px", borderRadius: "12px", fontSize: "12px", fontWeight: 700, cursor: "pointer", transition: "all 0.2s" 
           }} onClick={() => setEditing((v) => !v)}>
-            {editing ? "Cancel" : "✎ Edit"}
+            {editing ? "Cancel" : "✎ Edit Identity"}
           </button>
         )}
       </div>
@@ -106,9 +129,7 @@ export default function LockedIdentity({ patient, locked = false }: { patient: P
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <label style={{ fontSize: "11px", fontWeight: 700, color: "#a1a1aa", textTransform: "uppercase" }}>Full name</label>
             <input
-              style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e4e4e7", fontSize: "14px", outline: "none", transition: "border-color 0.2s" }}
-              onFocus={(e) => e.target.style.borderColor = "#0f766e"}
-              onBlur={(e) => e.target.style.borderColor = "#e4e4e7"}
+              style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e4e4e7", fontSize: "14px", outline: "none" }}
               value={form.fullName}
               onChange={(e) => setForm({ ...form, fullName: e.target.value })}
             />
@@ -122,74 +143,74 @@ export default function LockedIdentity({ patient, locked = false }: { patient: P
             />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <label style={{ fontSize: "11px", fontWeight: 700, color: "#a1a1aa", textTransform: "uppercase" }}>Gender</label>
-            <select
-              style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e4e4e7", fontSize: "14px", outline: "none" }}
-              value={form.gender}
-              onChange={(e) => setForm({ ...form, gender: e.target.value })}
-            >
-              <option value="">—</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <label style={{ fontSize: "11px", fontWeight: 700, color: "#a1a1aa", textTransform: "uppercase" }}>Address</label>
+            <label style={{ fontSize: "11px", fontWeight: 700, color: "#a1a1aa", textTransform: "uppercase" }}>Photo URL (Captured Face)</label>
             <input
               style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", border: "1px solid #e4e4e7", fontSize: "14px", outline: "none" }}
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              value={form.photoUrl}
+              onChange={(e) => setForm({ ...form, photoUrl: e.target.value })}
+              placeholder="https://..."
             />
           </div>
-          <button style={{ 
-            background: "linear-gradient(135deg, #0f766e 0%, #06b6d4 100%)", color: "white", padding: "12px", borderRadius: "10px", fontWeight: 700, border: "none", cursor: "pointer", marginTop: "8px" 
-          }} disabled={saving} onClick={save}>
-            {saving ? "Saving…" : "Save changes"}
-          </button>
+          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <button
+              onClick={save}
+              disabled={saving}
+              style={{ background: "#0f766e", color: "white", border: "none", padding: "8px 16px", borderRadius: "10px", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
         </div>
-      ) : (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
-          {conditions.map((c, i) => (
-            <span key={i} style={{ background: "#f3f4f6", color: "#52525b", padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 600 }}>
-              {c}
-            </span>
-          ))}
-          {allergies.map((a, i) => (
-            <span key={i} style={{ background: "#fee2e2", color: "#b91c1c", padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 700 }}>
-              ⚠ {a.substance} allergy
-            </span>
-          ))}
-          {medications.map((m, i) => (
-            <span key={i} style={{ background: "#e0f2fe", color: "#0369a1", padding: "4px 10px", borderRadius: "8px", fontSize: "12px", fontWeight: 600 }}>
-              {m.name} {m.dose}
-            </span>
-          ))}
-          {conditions.length + allergies.length + medications.length === 0 && (
-            <span style={{ fontSize: "12px", color: "#a1a1aa", fontStyle: "italic" }}>
-              No known conditions, allergies, or medications on file.
-            </span>
-          )}
-        </div>
-      )}
+      ) : null}
 
-      <button style={{ background: "none", border: "none", color: "#0f766e", fontSize: "12px", fontWeight: 700, cursor: "pointer", padding: 0 }} onClick={toggleAudit}>
-        {showAudit ? "Hide" : "View"} change history
-      </button>
+      {/* Allergies, Conditions, Medications Summary */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ background: "#f8fafc", padding: "12px 16px", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+          <div style={{ fontSize: "11px", fontWeight: 800, color: "#e11d48", textTransform: "uppercase", marginBottom: "4px" }}>⚠️ Known Allergies</div>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: allergies.length > 0 ? "#18181b" : "#71717a" }}>
+            {allergies.length > 0 ? allergies.map(a => a.substance).join(", ") : "Nil"}
+          </div>
+        </div>
+
+        <div style={{ background: "#f8fafc", padding: "12px 16px", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+          <div style={{ fontSize: "11px", fontWeight: 800, color: "#0284c7", textTransform: "uppercase", marginBottom: "4px" }}>🩺 Chronic Conditions</div>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: conditions.length > 0 ? "#18181b" : "#71717a" }}>
+            {conditions.length > 0 ? conditions.join(", ") : "Nil"}
+          </div>
+        </div>
+
+        <div style={{ background: "#f8fafc", padding: "12px 16px", borderRadius: "12px", border: "1px solid #f1f5f9" }}>
+          <div style={{ fontSize: "11px", fontWeight: 800, color: "#7c3aed", textTransform: "uppercase", marginBottom: "4px" }}>💊 Current Medications</div>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: medications.length > 0 ? "#18181b" : "#71717a" }}>
+            {medications.length > 0 ? medications.map(m => `${m.name} (${m.dose})`).join(", ") : "Nil"}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <button
+          onClick={toggleAudit}
+          style={{ background: "none", border: "none", color: "#64748b", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}
+        >
+          {showAudit ? "Hide Audit History" : "📜 View Audit History"}
+        </button>
+      </div>
 
       {showAudit && (
-        <div style={{ marginTop: "12px", padding: "12px", background: "#fafafa", borderRadius: "12px", border: "1px solid #f4f4f5" }}>
-          {!auditLog || auditLog.length === 0 ? (
-            <div style={{ fontSize: "12px", color: "#a1a1aa" }}>No changes recorded yet.</div>
+        <div style={{ marginTop: "16px", background: "#f8fafc", borderRadius: "12px", padding: "14px", border: "1px solid #e2e8f0" }}>
+          <div style={{ fontSize: "12px", fontWeight: 800, color: "#334155", marginBottom: "8px", textTransform: "uppercase" }}>Audit Trail</div>
+          {!auditLog ? (
+            <div style={{ fontSize: "13px", color: "#64748b" }}>Loading logs...</div>
+          ) : auditLog.length === 0 ? (
+            <div style={{ fontSize: "13px", color: "#64748b" }}>No edits recorded yet.</div>
           ) : (
-            auditLog.map((entry) => (
-              <div key={entry.id} style={{ fontSize: "12px", color: "#52525b", marginBottom: "8px", paddingBottom: "8px", borderBottom: "1px solid #e4e4e7" }}>
-                <strong style={{ color: "#18181b" }}>{entry.fieldChanged}</strong> changed from{" "}
-                <strong style={{ color: "#18181b" }}>{entry.oldValue || "—"}</strong> to{" "}
-                <strong style={{ color: "#18181b" }}>{entry.newValue || "—"}</strong> by {entry.changedBy.fullName} ·{" "}
-                <span style={{ color: "#a1a1aa" }}>{formatDateTime(entry.changedAt)}</span>
-              </div>
-            ))
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {auditLog.map((log) => (
+                <div key={log.id} style={{ fontSize: "12px", color: "#475569", borderBottom: "1px dashed #cbd5e1", paddingBottom: "6px" }}>
+                  <strong>{log.fieldChanged}</strong> updated from <em>{log.oldValue || "empty"}</em> to <strong>{log.newValue}</strong> by {log.changedBy?.fullName || "Staff"} on {formatDateTime(log.changedAt)}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}
