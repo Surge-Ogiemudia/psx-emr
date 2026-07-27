@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getSsoSession, signOut } from "@/auth";
+import TopBarActions from "./TopBarActions";
 
 export default async function TopBar({
   title,
@@ -22,6 +23,11 @@ export default async function TopBar({
         .slice(0, 2)
         .toUpperCase()
     : "??";
+
+  async function handleSignOut() {
+    "use server";
+    await signOut({ redirectTo: "/login" });
+  }
 
   return (
     <div style={{ 
@@ -49,29 +55,24 @@ export default async function TopBar({
             marginBottom: "6px", 
             display: "inline-flex", 
             alignItems: "center", 
-            gap: "6px",
-            fontWeight: 600,
+            gap: "4px",
             textDecoration: "none",
-            background: "rgba(255, 255, 255, 0.15)",
-            padding: "4px 10px",
-            borderRadius: "20px",
-            backdropFilter: "blur(4px)",
-            transition: "all 0.2s"
+            fontWeight: 600
           }}>
-            ← {backLabel ?? "Back"}
+            ← {backLabel || "Back"}
           </Link>
         )}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-          <h2 style={{ fontSize: "22px", fontWeight: 800, letterSpacing: "-0.5px", margin: 0, color: "#ffffff" }}>{title}</h2>
-          <span style={{
-            fontSize: "10px",
-            fontWeight: 800,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            background: "rgba(255, 255, 255, 0.2)",
-            color: "#ffffff",
-            padding: "3px 8px",
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <h2 style={{ fontSize: "20px", fontWeight: "800", color: "white", margin: 0, letterSpacing: "-0.5px" }}>{title}</h2>
+          <span style={{ 
+            fontSize: "10px", 
+            fontWeight: "800", 
+            background: "rgba(255, 255, 255, 0.2)", 
+            color: "white", 
+            padding: "2px 8px", 
             borderRadius: "12px",
+            letterSpacing: "0.05em",
+            border: "1px solid rgba(255, 255, 255, 0.3)",
             backdropFilter: "blur(6px)"
           }}>EMR</span>
         </div>
@@ -79,84 +80,11 @@ export default async function TopBar({
       </div>
 
       {session?.user && (
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginLeft: "16px" }}>
-          <Link
-            href="/analytics"
-            style={{
-              background: "rgba(255, 255, 255, 0.2)",
-              color: "white",
-              padding: "8px 14px",
-              borderRadius: "20px",
-              fontSize: "12px",
-              fontWeight: 800,
-              textDecoration: "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-            }}
-          >
-            📊 Analytics
-          </Link>
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            background: "rgba(255, 255, 255, 0.15)",
-            backdropFilter: "blur(8px)",
-            padding: "6px 12px 6px 8px",
-            borderRadius: "30px",
-            border: "1px solid rgba(255, 255, 255, 0.25)",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.08)"
-          }}>
-            <div style={{
-              width: "36px",
-              height: "36px",
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #38bdf8 0%, #818cf8 100%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "13px",
-              fontWeight: "800",
-              color: "white",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-              flexShrink: 0
-            }}>
-              {initials}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
-              <span style={{ fontSize: "12px", fontWeight: "700", color: "white", lineHeight: 1.2 }}>
-                {userName.split(" ")[0]}
-              </span>
-              <form action={async () => {
-                "use server";
-                await signOut({ redirectTo: "/login" });
-              }}>
-                <button 
-                  type="submit" 
-                  style={{ 
-                    fontSize: "10px", 
-                    color: "rgba(255,255,255,0.85)", 
-                    textTransform: "uppercase", 
-                    letterSpacing: "0.05em",
-                    fontWeight: "800",
-                    cursor: "pointer",
-                    padding: 0,
-                    margin: 0,
-                    background: "transparent",
-                    border: "none",
-                    textAlign: "left",
-                    lineHeight: 1.2,
-                    textDecoration: "underline"
-                  }}
-                >
-                  Log Out
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
+        <TopBarActions
+          userName={userName}
+          initials={initials}
+          signOutAction={handleSignOut}
+        />
       )}
     </div>
   );
