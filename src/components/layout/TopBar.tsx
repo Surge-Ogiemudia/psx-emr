@@ -80,6 +80,24 @@ export default async function TopBar({
 
       {session?.user && (
         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginLeft: "16px" }}>
+          <Link
+            href="/analytics"
+            style={{
+              background: "rgba(255, 255, 255, 0.2)",
+              color: "white",
+              padding: "8px 14px",
+              borderRadius: "20px",
+              fontSize: "12px",
+              fontWeight: 800,
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+            }}
+          >
+            📊 Analytics
+          </Link>
           <div style={{
             display: "flex",
             alignItems: "center",

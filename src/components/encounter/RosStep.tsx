@@ -63,7 +63,7 @@ export default function RosStep({
     return (
       <div className="ai-processing">
         <div className="ai-dot" />
-        <span className="ai-text">Gemma is preparing a short symptom checklist…</span>
+        <span className="ai-text">Preparing symptom checklist…</span>
       </div>
     );
   }
