@@ -53,6 +53,14 @@ button {
   border: none;
   background: none;
   cursor: pointer;
+  transition: transform 0.1s ease, opacity 0.1s ease, box-shadow 0.15s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.97);
+  opacity: 0.88;
 }
 
 a {
@@ -1175,6 +1183,12 @@ textarea.field {
   letter-spacing: -0.2px;
   width: 100%;
   display: block;
+  transition: transform 0.1s ease, opacity 0.15s ease, background-color 0.15s ease;
+  user-select: none;
+}
+.cta-btn:active:not(:disabled) {
+  transform: scale(0.97);
+  opacity: 0.9;
 }
 .cta-btn:disabled,
 .cta-btn.disabled {
