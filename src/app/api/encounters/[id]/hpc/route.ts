@@ -9,17 +9,15 @@ interface HpcInput {
 }
 
 interface HpcPayload {
-  segments: HpcInput[];
+  segments?: HpcInput[];
+  hpcs?: HpcInput[];
   hpcAudioUrl?: string | null;
   hpcVoiceTranscript?: string | null;
 }
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id: encounterId } = await params;
+async function handleHpcSave(req: NextRequest, encounterId: string) {
   const payload: HpcPayload = await req.json();
+  const items = payload.hpcs || payload.segments || [];
 
   // Save the global audio/transcript to the Encounter record
   await prisma.encounter.update({
@@ -33,9 +31,9 @@ export async function PUT(
   // Handle the HPC segments
   await prisma.hpc.deleteMany({ where: { encounterId } });
   
-  if (payload.segments && payload.segments.length > 0) {
+  if (items.length > 0) {
     await prisma.hpc.createMany({
-      data: payload.segments.map((s) => ({
+      data: items.map((s) => ({
         encounterId,
         complaintSegment: s.complaintSegment,
         questionsGenerated: JSON.stringify(s.questionsGenerated ?? []),
@@ -47,4 +45,20 @@ export async function PUT(
 
   const hpcs = await prisma.hpc.findMany({ where: { encounterId } });
   return NextResponse.json({ hpcs });
+}
+
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id: encounterId } = await params;
+  return handleHpcSave(req, encounterId);
+}
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id: encounterId } = await params;
+  return handleHpcSave(req, encounterId);
 }
