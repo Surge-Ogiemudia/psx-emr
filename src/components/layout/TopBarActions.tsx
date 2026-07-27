@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import ApiKeySettingsModal from "@/components/settings/ApiKeySettingsModal";
 
 export default function TopBarActions({
   userName,
@@ -13,7 +12,6 @@ export default function TopBarActions({
   initials: string;
   signOutAction: () => Promise<void>;
 }) {
-  const [showKeyModal, setShowKeyModal] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -111,31 +109,26 @@ export default function TopBarActions({
             📊 Analytics Dashboard
           </Link>
 
-          <button
-            onClick={() => {
-              setShowKeyModal(true);
-              setShowDropdown(false);
-            }}
+          <Link
+            href="/settings/api-keys"
+            onClick={() => setShowDropdown(false)}
             style={{
               padding: "10px 16px",
               borderRadius: "10px",
               fontSize: "14px",
               fontWeight: 600,
+              textDecoration: "none",
               color: "#374151",
               display: "flex",
               alignItems: "center",
               gap: "8px",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              textAlign: "left",
               transition: "background 0.2s"
             }}
             onMouseOver={(e) => e.currentTarget.style.background = "#f3f4f6"}
             onMouseOut={(e) => e.currentTarget.style.background = "transparent"}
           >
             🔑 API Settings
-          </button>
+          </Link>
 
           <div style={{ height: "1px", background: "#e5e7eb", margin: "4px 0" }} />
 
@@ -166,11 +159,6 @@ export default function TopBarActions({
           </form>
         </div>
       )}
-
-      <ApiKeySettingsModal
-        isOpen={showKeyModal}
-        onClose={() => setShowKeyModal(false)}
-      />
     </div>
   );
 }
