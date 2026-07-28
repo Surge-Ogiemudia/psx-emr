@@ -15,7 +15,7 @@ export default function MedicineSelector({
 }) {
   const [query, setQuery] = useState("");
   const [showResults, setShowResults] = useState(false);
-  const [matches, setMatches] = useState<{ productId: string; name: string; defaultDose: string; retailPrice: number }[]>([]);
+  const [matches, setMatches] = useState<{ productId: string; name: string; defaultDose: string; retailPrice: number; qty: number }[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -108,14 +108,16 @@ export default function MedicineSelector({
           <div style={{ maxHeight: "200px", overflowY: "auto", marginTop: "8px", display: "flex", flexDirection: "column", gap: "4px", padding: "4px", background: "#ffffff", border: "1px solid #e4e4e7", borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
             {matches.map((m) => (
               <button
-                key={m.name}
+                key={m.productId || m.name}
                 style={{ width: "100%", textAlign: "left", padding: "10px 12px", border: "none", background: "transparent", borderRadius: "8px", cursor: "pointer", transition: "background 0.2s" }}
                 onMouseOver={(e) => e.currentTarget.style.background = "#f4f4f5"}
                 onMouseOut={(e) => e.currentTarget.style.background = "transparent"}
                 onClick={() => addMedicine(m.name, m.defaultDose, m.productId, m.retailPrice)}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: "14px", fontWeight: 600, color: "#18181b" }}>{m.name}</span>
+                  <span style={{ fontSize: "14px", fontWeight: 600, color: "#18181b" }}>
+                    {m.name} {m.qty <= 0 && <span style={{ color: "#ef4444", fontSize: "12px", fontWeight: 700, marginLeft: "4px" }}>(out of stock)</span>}
+                  </span>
                   <span style={{ fontSize: "13px", fontWeight: 700, color: "#059669", background: "#d1fae5", padding: "2px 8px", borderRadius: "10px" }}>₦{m.retailPrice?.toLocaleString()}</span>
                 </div>
               </button>
