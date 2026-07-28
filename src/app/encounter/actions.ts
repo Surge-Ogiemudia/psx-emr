@@ -63,14 +63,30 @@ export async function searchInventory(query: string) {
 
   // 2. Secondary fallback search (Main PSX DB / Synkk)
   const fallbackClient = getFallbackPrisma();
-  if (fallbackClient && pharmacy.subdomain) {
+  if (fallbackClient) {
     try {
+      const pName = pharmacy.name || "";
+      // Generate candidate slugs (e.g. "Medlife Pharmacy" -> "medlife", "medlifepharma", "medlife pharmacy")
+      const cleanName = pName.toLowerCase().replace(/pharmacy/gi, "").trim();
+      const slugOptions = Array.from(new Set([
+        pharmacy.subdomain,
+        cleanName,
+        `${cleanName}pharma`,
+        pName.toLowerCase(),
+        pName.toLowerCase().replace(/\s+/g, ""),
+      ])).filter(Boolean);
+
+      console.log(`[INVENTORY_DIAGNOSTIC] Pharmacy: "${pName}" | Subdomain: "${pharmacy.subdomain}" | Slugs:`, slugOptions);
+
+      const slugFilters = slugOptions.flatMap((s) => [
+        { slug: s },
+        { slug: { contains: s, mode: "insensitive" as const } },
+        { businessName: { contains: s, mode: "insensitive" as const } },
+      ]);
+
       const fallbackProducts = await fallbackClient.product.findMany({
         where: {
-          OR: [
-            { slug: pharmacy.subdomain },
-            { slug: { contains: pharmacy.subdomain, mode: "insensitive" } },
-          ],
+          OR: slugFilters,
           AND: [
             {
               OR: [
@@ -84,6 +100,8 @@ export async function searchInventory(query: string) {
         take: 20,
       });
 
+      console.log(`[INVENTORY_DIAGNOSTIC] Fallback search found ${fallbackProducts.length} items for query "${query}"`);
+
       for (const p of fallbackProducts) {
         if (!p.itemName || resultsMap.has(p.id)) continue;
         const name = `${p.itemName} ${p.brand ? `(${p.brand})` : ""} ${p.size || ""}`.trim();
@@ -96,8 +114,10 @@ export async function searchInventory(query: string) {
         });
       }
     } catch (e) {
-      console.error("Fallback inventory search error:", e);
+      console.error("[INVENTORY_DIAGNOSTIC] Fallback inventory search error:", e);
     }
+  } else {
+    console.log("[INVENTORY_DIAGNOSTIC] FALLBACK_MONGO_URI is not set in environment.");
   }
 
   return Array.from(resultsMap.values());
