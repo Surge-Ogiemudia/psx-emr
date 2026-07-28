@@ -297,7 +297,7 @@ model Product {
   pharmacyId      String?  @db.ObjectId
   branchId        String?  @db.ObjectId
   slug            String?
-  itemName        String
+  itemName        String?
   brand           String?
   size            String?
   category        String?
