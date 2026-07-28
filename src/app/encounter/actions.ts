@@ -9,11 +9,18 @@ export async function searchInventory(query: string) {
 
   const products = await prisma.product.findMany({
     where: {
-      pharmacyId: pharmacy.id,
       OR: [
-        { itemName: { contains: query, mode: "insensitive" } },
-        { brand: { contains: query, mode: "insensitive" } },
-        { category: { contains: query, mode: "insensitive" } },
+        { pharmacyId: pharmacy.id },
+        { slug: pharmacy.subdomain },
+      ],
+      AND: [
+        {
+          OR: [
+            { itemName: { contains: query, mode: "insensitive" } },
+            { brand: { contains: query, mode: "insensitive" } },
+            { category: { contains: query, mode: "insensitive" } },
+          ],
+        },
       ],
     },
     take: 20,
@@ -23,7 +30,7 @@ export async function searchInventory(query: string) {
     productId: p.id,
     name: `${p.itemName} ${p.brand ? `(${p.brand})` : ""} ${p.size || ""}`.trim(),
     defaultDose: "", // Prescriber will fill dosage instructions
-    qty: p.quantityInStock,
-    retailPrice: p.retailPrice,
+    qty: p.quantity ?? p.quantityInStock ?? 0,
+    retailPrice: p.amount ?? p.retailPrice ?? 0,
   }));
 }
