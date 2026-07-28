@@ -294,14 +294,18 @@ model AuditLog {
 
 model Product {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
-  pharmacyId      String   @db.ObjectId
-  branchId        String   @db.ObjectId
+  pharmacyId      String?  @db.ObjectId
+  branchId        String?  @db.ObjectId
+  slug            String?
   itemName        String
-  brand           String
-  size            String
-  category        String
-  quantityInStock Float
-  retailPrice     Float
+  brand           String?
+  size            String?
+  category        String?
+  quantityInStock Float?
+  retailPrice     Float?
+  amount          Float?
+  quantity        Float?
+  source          String?
   expiryDate      DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
