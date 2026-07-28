@@ -65,21 +65,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             // Lazy provision pharmacy for all roles so the EMR can display the correct name
             if (targetPharmacyId) {
               let pharmacy = await prisma.pharmacy.findUnique({ where: { id: targetPharmacyId } });
+              const derivedSubdomain = (decoded.businessName || "").toLowerCase().replace(/pharmacy/gi, "").replace(/[^a-z0-9]/g, "") || targetPharmacyId.slice(-6);
+
               if (!pharmacy) {
                 pharmacy = await prisma.pharmacy.create({
                   data: {
                     id: targetPharmacyId,
                     name: decoded.businessName || "My Pharmacy",
-                    subdomain: targetPharmacyId.slice(-6),
+                    subdomain: derivedSubdomain,
                   }
                 });
-              } else if (pharmacy.name === "My Pharmacy" || pharmacy.name === "Pharmacy") {
-                if (decoded.businessName) {
-                  await prisma.pharmacy.update({
-                    where: { id: targetPharmacyId },
-                    data: { name: decoded.businessName }
-                  });
-                }
+              } else if (pharmacy.name === "My Pharmacy" || pharmacy.name === "Pharmacy" || pharmacy.subdomain === targetPharmacyId.slice(-6)) {
+                await prisma.pharmacy.update({
+                  where: { id: targetPharmacyId },
+                  data: { 
+                    name: decoded.businessName || pharmacy.name,
+                    subdomain: derivedSubdomain,
+                  }
+                });
               }
             } else {
               // Try to fetch full name from EMR staff collection just in case Main PSX didn't have it
