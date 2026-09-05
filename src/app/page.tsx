@@ -170,6 +170,25 @@ export default async function HomePage() {
           <span>Dispensary</span>
         </Link>
         
+        <Link href="/encounter/quick" style={{
+          background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+          color: "white",
+          fontWeight: 800,
+          fontSize: "13px",
+          padding: "11px 22px",
+          borderRadius: "26px",
+          boxShadow: "0 4px 16px rgba(16, 185, 129, 0.45)",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          textDecoration: "none",
+          whiteSpace: "nowrap",
+          transition: "transform 0.2s"
+        }}>
+          <span style={{ fontSize: "15px" }}>⚡</span>
+          <span>Quick Dispense</span>
+        </Link>
+
         <Link href="/encounter/new" style={{
           background: "linear-gradient(135deg, #0ea5e9 0%, #0d9488 100%)",
           color: "white",
@@ -185,8 +204,8 @@ export default async function HomePage() {
           whiteSpace: "nowrap",
           transition: "transform 0.2s"
         }}>
-          <span style={{ fontSize: "16px", lineHeight: 1 }}>＋</span>
-          <span>New Encounter</span>
+          <span style={{ fontSize: "15px" }}>📋</span>
+          <span>Full Consultation</span>
         </Link>
       </div>
     </AppShell>
