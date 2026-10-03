@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function ShareEncounterModal({
   isOpen,
@@ -18,21 +18,50 @@ export default function ShareEncounterModal({
   const [scope, setScope] = useState<"full" | "prescription" | "diagnostics" | "referral">("full");
   const [targetPhone, setTargetPhone] = useState(patientPhone || "");
   const [copied, setCopied] = useState(false);
+  const [shareLink, setShareLink] = useState("");
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  // Links are signed on the server, so fetch one whenever the scope changes.
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    setShareLink("");
+    setLinkError(null);
+    fetch(`/api/encounters/${encounterId}/share`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scope }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (!res.ok || !data.path) {
+          setLinkError(data.error || "Could not create a share link");
+          return;
+        }
+        setShareLink(`${window.location.origin}${data.path}`);
+      })
+      .catch(() => {
+        if (!cancelled) setLinkError("Could not create a share link");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, encounterId, scope]);
 
   if (!isOpen) return null;
-
-  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const shareLink = `${baseUrl}/share/encounter/${encounterId}?scope=${scope}`;
   
   const shareText = `Hello ${patientName || "Patient"}, here is the view link for your clinical record from your pharmacy session:\n\n${shareLink}`;
 
   function handleCopyLink() {
+    if (!shareLink) return;
     navigator.clipboard.writeText(shareLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
   function triggerWhatsApp() {
+    if (!shareLink) return;
     const cleanPhone = targetPhone.replace(/[^0-9]/g, "");
     const waUrl = cleanPhone 
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(shareText)}`
@@ -41,11 +70,13 @@ export default function ShareEncounterModal({
   }
 
   function triggerEmail() {
+    if (!shareLink) return;
     const mailUrl = `mailto:?subject=${encodeURIComponent("Your Clinical Record & Summary")}&body=${encodeURIComponent(shareText)}`;
     window.location.href = mailUrl;
   }
 
   function triggerSms() {
+    if (!shareLink) return;
     const cleanPhone = targetPhone.replace(/[^0-9]/g, "");
     const smsUrl = `sms:${cleanPhone}?body=${encodeURIComponent(shareText)}`;
     window.location.href = smsUrl;
@@ -138,7 +169,7 @@ export default function ShareEncounterModal({
               onClick={handleCopyLink}
               style={{ width: "100%", padding: "10px", borderRadius: "10px", background: "#f4f4f5", color: "#18181b", fontWeight: 600, border: "1px solid #e4e4e7", cursor: "pointer", fontSize: "13px" }}
             >
-              {copied ? "✓ View Link Copied!" : "📋 Copy Web Link to Clipboard"}
+              {copied ? "✓ View Link Copied!" : !shareLink ? (linkError || "Preparing secure link…") : "📋 Copy Web Link to Clipboard"}
             </button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/format";
 import { parseJson } from "@/lib/types";
+import { isShareScope, verifyShareLink } from "@/lib/shareLink";
 import type { HpcAnswer, RosAnswerEntry, DispensedMedicine, ReferralDetails } from "@/lib/types";
 
 export default async function SharedEncounterPage({
@@ -8,12 +9,16 @@ export default async function SharedEncounterPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ scope?: string }>;
+  searchParams: Promise<{ scope?: string; sig?: string }>;
 }) {
   const { id } = await params;
-  const { scope = "full" } = await searchParams;
+  const { scope = "", sig = "" } = await searchParams;
 
-  const encounter = await prisma.encounter.findUnique({
+  // Only signed links open a record: the signature covers the encounter ID and
+  // the scope, so links can't be guessed or edited to reveal more.
+  const validLink = /^[0-9a-fA-F]{24}$/.test(id) && isShareScope(scope) && verifyShareLink(id, scope, sig);
+
+  const encounter = validLink ? await prisma.encounter.findUnique({
     where: { id },
     include: {
       patient: true,
@@ -25,7 +30,7 @@ export default async function SharedEncounterPage({
       assessment: true,
       managementPlan: true,
     },
-  });
+  }) : null;
 
   if (!encounter) {
     return (
@@ -68,7 +73,7 @@ export default async function SharedEncounterPage({
         <div style={{ background: "#f8fafc", borderRadius: 12, padding: 16, marginBottom: 24, border: "1px solid #f1f5f9" }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", marginBottom: 4 }}>Patient Details</div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>{patient.fullName}</div>
-          <div style={{ fontSize: 13, color: "#475569", marginTop: 2 }}>Contact: {patient.phoneNumber} | Gender: {patient.gender || "Not specified"}</div>
+          <div style={{ fontSize: 13, color: "#475569", marginTop: 2 }}>Gender: {patient.gender || "Not specified"}</div>
         </div>
 
         {/* Prescription Scope */}
