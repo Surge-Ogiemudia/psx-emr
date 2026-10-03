@@ -210,7 +210,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 });
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 export async function getSsoSession() {
   let session = await auth();
