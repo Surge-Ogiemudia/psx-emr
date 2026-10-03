@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireEncounterAccess } from "@/lib/access";
 
 /**
  * Marks a diagnostic_pending encounter as resumed once the patient returns
@@ -11,6 +12,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: encounterId } = await params;
+  const access = await requireEncounterAccess(encounterId);
+  if (access instanceof NextResponse) return access;
   const body = await req.json();
 
   const complaint = await prisma.complaint.update({

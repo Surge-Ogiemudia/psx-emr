@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireApiPharmacy } from "@/lib/access";
 
 export async function POST(req: NextRequest) {
+  const pharmacy = await requireApiPharmacy();
+  if (pharmacy instanceof NextResponse) return pharmacy;
+
   try {
     const { 
       referredTo, 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireEncounterAccess } from "@/lib/access";
 
 export async function POST(
   request: Request,
@@ -7,6 +8,8 @@ export async function POST(
 ) {
   try {
     const { id: encounterId } = await params;
+    const access = await requireEncounterAccess(encounterId);
+    if (access instanceof NextResponse) return access;
 
     const plan = await prisma.managementPlan.update({
       where: { encounterId },

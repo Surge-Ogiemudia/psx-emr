@@ -1,7 +1,11 @@
 import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
+import { requireApiPharmacy } from '@/lib/access';
 
 export async function POST(request: Request): Promise<NextResponse> {
+  const pharmacy = await requireApiPharmacy();
+  if (pharmacy instanceof NextResponse) return pharmacy;
+
   const { searchParams } = new URL(request.url);
   const filename = searchParams.get('filename');
 

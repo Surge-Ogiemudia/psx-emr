@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireEncounterAccess } from "@/lib/access";
 
 interface HpcInput {
   complaintSegment: string;
@@ -52,6 +53,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: encounterId } = await params;
+  const access = await requireEncounterAccess(encounterId);
+  if (access instanceof NextResponse) return access;
   return handleHpcSave(req, encounterId);
 }
 
@@ -60,5 +63,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: encounterId } = await params;
+  const access = await requireEncounterAccess(encounterId);
+  if (access instanceof NextResponse) return access;
   return handleHpcSave(req, encounterId);
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireEncounterAccess } from "@/lib/access";
 import { getCurrentPharmacy, getCurrentStaff } from "@/lib/tenant";
 
 export async function POST(
@@ -7,6 +8,8 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
+  const access = await requireEncounterAccess(id);
+  if (access instanceof NextResponse) return access;
   const { text } = await req.json();
 
   if (!text) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPharmacy, getCurrentStaff } from "@/lib/tenant";
+import { pharmacyOwnsPatient } from "@/lib/access";
 
 export async function POST(req: NextRequest) {
   const pharmacy = await getCurrentPharmacy();
@@ -15,6 +16,9 @@ export async function POST(req: NextRequest) {
   const { patientId } = await req.json();
   if (!patientId) {
     return NextResponse.json({ error: "patientId is required" }, { status: 400 });
+  }
+  if (!(await pharmacyOwnsPatient(pharmacy.id, patientId))) {
+    return NextResponse.json({ error: "Patient not found" }, { status: 404 });
   }
 
   const encounter = await prisma.encounter.create({

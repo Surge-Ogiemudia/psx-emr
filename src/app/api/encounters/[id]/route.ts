@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireEncounterAccess } from "@/lib/access";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const access = await requireEncounterAccess(id);
+  if (access instanceof NextResponse) return access;
 
   const encounter = await prisma.encounter.findUnique({
     where: { id },
@@ -33,6 +36,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const access = await requireEncounterAccess(id);
+  if (access instanceof NextResponse) return access;
   const body = await req.json();
 
   const data: Record<string, unknown> = {};

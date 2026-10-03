@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requirePatientAccess } from "@/lib/access";
 import { getCurrentPharmacy, getCurrentStaff } from "@/lib/tenant";
 import { logPatientFieldChanges } from "@/lib/audit";
 
@@ -8,6 +9,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const access = await requirePatientAccess(id);
+  if (access instanceof NextResponse) return access;
 
   const patient = await prisma.patient.findUnique({
     where: { id },
@@ -39,6 +42,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+  const access = await requirePatientAccess(id);
+  if (access instanceof NextResponse) return access;
   const pharmacy = await getCurrentPharmacy();
   if (!pharmacy) {
     return NextResponse.json({ error: "No pharmacy found" }, { status: 400 });
