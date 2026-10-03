@@ -42,3 +42,8 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# local AI assistant files
+.claude/
+CLAUDE.md
+AGENTS.md
