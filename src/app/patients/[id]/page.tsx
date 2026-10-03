@@ -8,6 +8,7 @@ import LockedIdentity from "@/components/patient/LockedIdentity";
 import EncounterTimeline from "@/components/patient/EncounterTimeline";
 import NewEncounterButton from "@/components/patient/NewEncounterButton";
 import { prisma } from "@/lib/prisma";
+import { getTenantId } from "@/lib/tenant";
 import { formatRelative } from "@/lib/format";
 
 export default async function PatientRecordPage({
@@ -16,9 +17,11 @@ export default async function PatientRecordPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const pharmacyId = await getTenantId();
+  if (!/^[0-9a-fA-F]{24}$/.test(id)) notFound();
 
-  const patient = await prisma.patient.findUnique({
-    where: { id },
+  const patient = await prisma.patient.findFirst({
+    where: { id, pharmacyId },
     include: {
       encounters: {
         orderBy: { encounterDate: "desc" },

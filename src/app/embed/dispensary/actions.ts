@@ -1,11 +1,19 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { getCurrentPharmacy } from "@/lib/tenant";
 
-export async function createWalkInPatient(pharmacyId: string, fullName: string, phoneNumber: string) {
-  if (!pharmacyId || !fullName) {
+// The pharmacyId argument is kept for existing callers but not trusted: walk-in
+// patients are always created in the logged-in pharmacy.
+export async function createWalkInPatient(_pharmacyId: string, fullName: string, phoneNumber: string) {
+  const pharmacy = await getCurrentPharmacy();
+  if (!pharmacy) {
+    throw new Error("Not authenticated");
+  }
+  if (!fullName) {
     throw new Error("Missing required fields");
   }
+  const pharmacyId = pharmacy.id;
 
   const patient = await prisma.patient.create({
     data: {

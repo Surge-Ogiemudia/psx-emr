@@ -7,35 +7,26 @@ export default async function EmbedDispensaryPage({
 }: {
   searchParams: Promise<{ patientId?: string; pharmacyId?: string }>;
 }) {
-  const { patientId, pharmacyId: queryPharmacyId } = await searchParams;
+  // Prescriptions are always scoped to the logged-in pharmacy. A pharmacyId in
+  // the URL (still sent by older embeds) is ignored so it can't be used to view
+  // another pharmacy's dispensary.
+  const { patientId } = await searchParams;
   const sessionPharmacy = await getCurrentPharmacy();
-  let pharmacyId = queryPharmacyId || sessionPharmacy?.id;
 
-  // If a slug is passed (not a valid ObjectId), resolve it to the pharmacy ID
-  if (pharmacyId && !pharmacyId.match(/^[0-9a-fA-F]{24}$/)) {
-    const p = await prisma.pharmacy.findUnique({
-      where: { subdomain: pharmacyId }
-    });
-    if (p) {
-      pharmacyId = p.id;
-    } else {
-      pharmacyId = undefined;
-    }
-  }
-
-  if (!patientId && !pharmacyId) {
+  if (!sessionPharmacy) {
     return (
       <div style={{ padding: 20, textAlign: "center", color: "var(--muted)", fontFamily: "sans-serif" }}>
-        No pharmacy or patient selected
+        Please log in to view the dispensary
       </div>
     );
   }
+  const pharmacyId = sessionPharmacy.id;
 
   // Fetch encounters for this specific patient OR pharmacy
   const encounters = await prisma.encounter.findMany({
     where: {
       ...(patientId ? { patientId } : {}),
-      ...(pharmacyId ? { pharmacyId } : {}),
+      pharmacyId,
       managementPlan: {
         isNot: null,
       },

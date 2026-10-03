@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getTenantId } from "@/lib/tenant";
 import AppShell from "@/components/layout/AppShell";
 import TopBar from "@/components/layout/TopBar";
 import EncounterReviewClient from "./EncounterReviewClient";
@@ -10,9 +11,11 @@ export default async function EncounterReviewPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const pharmacyId = await getTenantId();
   
-  const encounter = await prisma.encounter.findUnique({
-    where: { id },
+  const encounter = /^[0-9a-fA-F]{24}$/.test(id)
+    ? await prisma.encounter.findFirst({
+    where: { id, pharmacyId },
     include: {
       patient: true,
       staff: { select: { fullName: true } },
@@ -23,7 +26,8 @@ export default async function EncounterReviewPage({
       assessment: true,
       managementPlan: true,
     },
-  });
+  })
+    : null;
 
   if (!encounter) {
     return (
